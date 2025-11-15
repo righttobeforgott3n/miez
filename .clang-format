@@ -1,0 +1,74 @@
+---
+# Allman Style C Formatter Configuration
+# This configuration enforces the Allman brace style for C code
+
+# Language specification
+Language: C
+
+# Allman Style: Opening and closing braces on separate lines
+BreakBeforeBraces: Allman
+BreakBeforeBraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterExternBlock: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+
+# Indentation settings
+IndentWidth: 4
+UseTab: Never
+TabWidth: 4
+
+# Column limit (line width)
+ColumnLimit: 80
+
+# Pointer alignment
+PointerAlignment: Left
+
+# Reference alignment
+ReferenceAlignment: Left
+
+# Spacing settings
+SpaceBeforeAssignmentOperators: true
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
+SpacesBeforeTrailingComments: 2
+
+# Control statement settings
+IndentCaseLabels: true
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+
+# Function declaration style
+BreakAfterReturnType: All
+
+# Alignment settings
+AlignOperands: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+
+# Comment settings
+ReflowComments: true
+SpaceInEmptyParentheses: false
+
+# Line breaking
+BreakStringLiterals: true
+BreakBeforeBinaryOperators: NonAssignment
+
+# Parentheses
+RemoveBracesForControlStatements: false
+
+# Other settings
+InsertBraces: true
+Cpp11BracedListStyle: false
+
+# Sorted includes
+SortIncludes: CaseInsensitive
