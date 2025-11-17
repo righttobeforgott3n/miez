@@ -1,0 +1,32 @@
+#ifndef GENERIC_LINKED_LIST_H
+#define GENERIC_LINKED_LIST_H
+
+#include <stddef.h>
+
+typedef struct generic_linked_list_t *generic_linked_list;
+
+generic_linked_list
+generic_linked_list_new();
+
+void
+generic_linked_list_free(generic_linked_list list);
+
+size_t
+generic_linked_list_size(generic_linked_list list);
+
+int
+generic_linked_list_insert_first(generic_linked_list list,
+                                            void* data);
+int
+generic_linked_list_insert_last(generic_linked_list list,
+                                           void* data);
+
+int
+generic_linked_list_remove_first(generic_linked_list list,
+                                            void** data);
+
+int
+generic_linked_list_remove_last(generic_linked_list list,
+                                           void** data);
+
+#endif // GENERIC_LINKED_LIST_H

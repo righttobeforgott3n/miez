@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 typedef struct
 {
     int passed;
@@ -7,7 +9,6 @@ typedef struct
 static test_stats_t stats = { 0, 0 };
 
 #define TEST_ASSERT(condition, message)                                        \
-    do                                                                         \
     {                                                                          \
         if (condition)                                                         \
         {                                                                      \
@@ -19,6 +20,6 @@ static test_stats_t stats = { 0, 0 };
             printf("  ✗ FAIL: %s\n", message);                                 \
             stats.failed++;                                                    \
         }                                                                      \
-    } while (0)
+    }
 
 #define TEST_SUITE(name) printf("\n[TEST SUITE] %s\n", name)

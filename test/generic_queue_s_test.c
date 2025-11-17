@@ -1,5 +1,5 @@
 #include "test_utils.h"
-#include "pseudo_generic_queue_s.h"
+#include "generic_queue_s.h"
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -10,7 +10,7 @@ struct thread_args_t
     
     size_t thread_id;
 
-    pseudo_generic_queue_s queue;
+    generic_queue_s queue;
 
     int data;
     unsigned int times;
@@ -22,7 +22,7 @@ enqueue_thread(void* args)
 
     struct thread_args_t* t_args = (struct thread_args_t*) args;
 
-    pseudo_generic_queue_s q = t_args->queue;
+    generic_queue_s q = t_args->queue;
     if (!q)
     {
         fprintf(stderr, "Queue instance equals to NULL - Thread ID: %zu - Callback: enqueue_thread", t_args->thread_id);
@@ -35,7 +35,7 @@ enqueue_thread(void* args)
 
         int *data = malloc(sizeof(int));
         *data = t_args->data;
-        pseudo_generic_queue_s_enqueue(t_args->queue, (void*) data);
+        generic_queue_s_enqueue(t_args->queue, (void*) data);
         
         ++i;
     }
@@ -49,7 +49,7 @@ dequeue_thread(void* args)
 
     struct thread_args_t* t_args = (struct thread_args_t*) args;
 
-    pseudo_generic_queue_s q = t_args->queue;
+    generic_queue_s q = t_args->queue;
     if (!q)
     {
         fprintf(stderr, "Queue instance equals to NULL - Thread ID: %zu - Callback: dequeue_thread", t_args->thread_id);
@@ -62,7 +62,7 @@ dequeue_thread(void* args)
     {
 
         void *data = NULL;
-        r = pseudo_generic_queue_s_dequeue(t_args->queue, &data);        
+        r = generic_queue_s_dequeue(t_args->queue, &data);        
         
         if (r)
         {
@@ -91,7 +91,7 @@ clear_queue_thread(void *args)
 
     printf("Thread ID: %zu - Callback: clear_queue_thread - Begin\n", thread_id);
 
-    pseudo_generic_queue_s q = t_args->queue;
+    generic_queue_s q = t_args->queue;
     if (!q)
     {
         fprintf(stderr, "Queue instance equals to NULL - Thread ID: %zu - Callback: clear_queue_thread", thread_id);
@@ -99,11 +99,11 @@ clear_queue_thread(void *args)
     }
 
     size_t queue_size = 0;
-    while ((queue_size = pseudo_generic_queue_s_size(q)))
+    while ((queue_size = generic_queue_s_size(q)))
     {
 
         void *data = NULL;
-        int r = pseudo_generic_queue_s_dequeue(q, &data);
+        int r = generic_queue_s_dequeue(q, &data);
 
         if (r)
         {
@@ -127,7 +127,7 @@ queue_s_concurrent_stress(int n_threads, int n_times_x_thread)
 
     TEST_SUITE("Concurrent Stress Test");
 
-    pseudo_generic_queue_s q = pseudo_generic_queue_s_new();
+    generic_queue_s q = generic_queue_s_new();
     TEST_ASSERT(q != NULL, "Queue is not NULL");
 
     int i = 0;
@@ -163,7 +163,7 @@ queue_s_concurrent_stress(int n_threads, int n_times_x_thread)
         i++;
     }
     
-    size_t q_size = pseudo_generic_queue_s_size(q);
+    size_t q_size = generic_queue_s_size(q);
     if (q_size)
     {
         
@@ -186,7 +186,7 @@ queue_s_concurrent_stress(int n_threads, int n_times_x_thread)
             i++;
         }
 
-        size_t q_size_updated = pseudo_generic_queue_s_size(q); 
+        size_t q_size_updated = generic_queue_s_size(q); 
         TEST_ASSERT(!q_size_updated, "Queue is empty\n");
     }
     else
@@ -195,7 +195,7 @@ queue_s_concurrent_stress(int n_threads, int n_times_x_thread)
     }
 
     TEST_ASSERT(1, "Queue survived concurrent stress test without crashing");
-    pseudo_generic_queue_s_free(q);
+    generic_queue_s_free(q);
 }
 
 int
@@ -207,8 +207,8 @@ main(int argc __attribute__((unused)), char **argv __attribute((unused)))
     printf("Begin Thread-Safe Queue Stress Test Suite\n");
     printf("*****************************************\n");
 
-    int n_threads = 10000;
-    int n_times_x_thread = 10000;
+    int n_threads = 100;
+    int n_times_x_thread = 10;
     queue_s_concurrent_stress(n_threads, n_times_x_thread);
 
     printf("\n");

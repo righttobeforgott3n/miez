@@ -1,4 +1,4 @@
-#include "pseudo_generic_linked_list.h"
+#include "generic_linked_list.h"
 #include <stddef.h>
 #include <stdlib.h>
 
@@ -9,19 +9,19 @@ struct node_t
     struct node_t* prev;
 };
 
-struct pseudo_generic_linked_list_t
+struct generic_linked_list_t
 {
     size_t size;
     struct node_t* head_guard;
     struct node_t* tail_guard;
 };
 
-pseudo_generic_linked_list
-pseudo_generic_linked_list_new()
+generic_linked_list
+generic_linked_list_new()
 {
 
-    pseudo_generic_linked_list list = (pseudo_generic_linked_list) malloc(
-        sizeof(struct pseudo_generic_linked_list_t));
+    generic_linked_list list = (generic_linked_list) malloc(
+        sizeof(struct generic_linked_list_t));
     if (!list)
     {
         return NULL;
@@ -49,7 +49,7 @@ pseudo_generic_linked_list_new()
 }
 
 void
-pseudo_generic_linked_list_free(pseudo_generic_linked_list list)
+generic_linked_list_free(generic_linked_list list)
 {
 
     if (!list)
@@ -73,7 +73,7 @@ pseudo_generic_linked_list_free(pseudo_generic_linked_list list)
 }
 
 size_t
-pseudo_generic_linked_list_size(pseudo_generic_linked_list list)
+generic_linked_list_size(generic_linked_list list)
 {
 
     if (!list)
@@ -85,7 +85,7 @@ pseudo_generic_linked_list_size(pseudo_generic_linked_list list)
 }
 
 int
-pseudo_generic_linked_list_insert_first(pseudo_generic_linked_list list,
+generic_linked_list_insert_first(generic_linked_list list,
                                         void* data)
 {
 
@@ -111,7 +111,7 @@ pseudo_generic_linked_list_insert_first(pseudo_generic_linked_list list,
 }
 
 int
-pseudo_generic_linked_list_insert_last(pseudo_generic_linked_list list,
+generic_linked_list_insert_last(generic_linked_list list,
                                        void* data)
 {
 
@@ -137,7 +137,7 @@ pseudo_generic_linked_list_insert_last(pseudo_generic_linked_list list,
 }
 
 int
-pseudo_generic_linked_list_remove_first(pseudo_generic_linked_list list,
+generic_linked_list_remove_first(generic_linked_list list,
                                         void** data)
 {
 
@@ -163,7 +163,7 @@ pseudo_generic_linked_list_remove_first(pseudo_generic_linked_list list,
 }
 
 int
-pseudo_generic_linked_list_remove_last(pseudo_generic_linked_list list,
+generic_linked_list_remove_last(generic_linked_list list,
                                        void** data)
 {
 

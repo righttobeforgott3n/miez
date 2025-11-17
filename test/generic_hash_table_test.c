@@ -1,0 +1,98 @@
+#include "test_utils.h"
+#include "generic_hash_table.h"
+
+size_t
+hash_string(void *str)
+{
+
+    size_t hash = 5381;
+    unsigned char *p = (unsigned char *)str;
+    while (*p)
+    {
+        hash = ((hash << 5) + hash) + *p++;
+    }
+
+    return hash;
+}
+
+void
+generic_hash_table_new_and_free_test(void)
+{
+    TEST_SUITE("Generic Hash Table New and Free Test");
+
+    size_t capacity = 3;
+    generic_hash_table ht = NULL;
+    int result = generic_hash_table_new(&ht, hash_string, capacity);
+
+    TEST_ASSERT(ht != NULL, "Hash Table instance created successfully");
+    TEST_ASSERT(result == 0, "Hash Table creation returns success");
+    
+    size_t check_capacity = 0;
+    generic_hash_table_get_capacity(ht, &check_capacity);
+    TEST_ASSERT(check_capacity == capacity, "Hash Table instance has the correct initial capacity");
+
+    size_t (*hash_function)(void *) = NULL;
+    generic_hash_table_get_hash_function(ht, &hash_function);
+    TEST_ASSERT(hash_function == hash_string, "Hash Table instance has the correct hash function");
+
+    result = generic_hash_table_free(ht);
+    TEST_ASSERT(result == 0, "Hash Table have been freed successfully");
+}
+
+void
+generic_hash_table_insert_test(void)
+{
+
+    TEST_SUITE("Generic Hash Table Insert Test");
+
+    generic_hash_table ht = NULL;
+    int result = generic_hash_table_new(&ht, hash_string, 10);
+    TEST_ASSERT(ht != NULL, "Hash Table instance created successfully");
+    TEST_ASSERT(result == 0, "Hash Table creation returns success");
+
+    char *key_0 = "key 0";
+    int item_0 = 3;
+    char *key_1 = "key 1";
+    int item_1 = 10;
+
+    result = generic_hash_table_insert(ht, &key_0, &item_0);
+    TEST_ASSERT(result == 0, "Hash Table has inserted the pair (\"key 0\", 3)");
+    result = generic_hash_table_insert(ht, &key_1, &item_1);
+    TEST_ASSERT(result == 0, "Hash Table has inserted the pair (\"key 1\", 10)");
+
+    int *check_item_0 = NULL;
+    int *check_item_1 = NULL;
+
+    result = generic_hash_table_get(ht, &key_0, (void **) &check_item_0);
+    TEST_ASSERT(result == 0, "Hash Table completed successfully the get \"key 0\" operation");
+    TEST_ASSERT(*check_item_0 == item_0, "The insertion of the pair (\"key 0\", 3) has been validated");
+    
+    result = generic_hash_table_get(ht, &key_1, (void **) &check_item_1);
+    TEST_ASSERT(result == 0, "Hash Table completed successfully the get \"key 1\" operation");
+    TEST_ASSERT(*check_item_1 == item_1, "The insertion of the pair (\"key 1\", 10) has been validated");
+
+    result = generic_hash_table_free(ht);
+    TEST_ASSERT(result == 0, "Hash Table have been freed successfully");
+}
+
+int
+main(int argc __attribute__((unused)), char **argv __attribute((unused)))
+{
+
+    printf("\n");
+    printf("*****************************************\n");
+    printf("Begin Generic Hash Table Test Suite\n");
+    printf("*****************************************\n");
+
+    generic_hash_table_new_and_free_test();
+    generic_hash_table_insert_test();
+
+    printf("\n");
+    printf("*****************************************\n");
+    printf("End Generic Hash Table Test Suite\n");
+    printf("*****************************************\n");
+
+    printf("Tests passed: %d\nTests failed: %d\n", stats.passed, stats.failed);
+
+    return stats.failed;
+}
