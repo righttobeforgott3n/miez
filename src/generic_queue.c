@@ -7,50 +7,64 @@ struct generic_queue_t
     generic_linked_list list;
 };
 
-generic_queue
-generic_queue_new()
+int
+generic_queue_new(generic_queue* out_self)
 {
 
-    generic_queue queue =
-        (generic_queue) malloc(sizeof(struct generic_queue_t));
-    if (!queue)
+    if (!out_self)
     {
-        return NULL;
+        return 1;
     }
 
-    queue->list = generic_linked_list_new();
-    if (!queue->list)
+    *out_self = (generic_queue) malloc(sizeof(struct generic_queue_t));
+    if (!*out_self)
     {
-        free(queue);
-        return NULL;
+        return -1;
     }
 
-    return queue;
+    int result = generic_linked_list_new(&((*out_self)->list));
+    if (result && !(*out_self)->list)
+    {
+
+        free(*out_self);
+        *out_self = NULL;
+
+        return -1;
+    }
+
+    return 0;
 }
 
-void
-generic_queue_free(generic_queue queue)
+int
+generic_queue_free(generic_queue self)
 {
 
-    if (!queue)
+    if (!self)
     {
-        return;
+        return 1;
     }
 
-    generic_linked_list_free(queue->list);
-    free(queue);
+    if (self->list)
+    {
+        generic_linked_list_free(self->list);
+    }
+    free(self);
+
+    return 0;
 }
 
-size_t
-generic_queue_size(generic_queue queue)
+int
+generic_queue_size(generic_queue queue, size_t* out_size)
 {
 
-    if (!queue)
+    if (!queue || !out_size)
     {
-        return 0;
+        return 1;
     }
 
-    return generic_linked_list_size(queue->list);
+    generic_linked_list_size(queue->list, out_size);
+
+    return 0;
 }
 
 int
@@ -66,13 +80,13 @@ generic_queue_enqueue(generic_queue queue, void* data)
 }
 
 int
-generic_queue_dequeue(generic_queue queue, void** data)
+generic_queue_dequeue(generic_queue queue, void** out_data)
 {
 
-    if (!queue || !data)
+    if (!queue || !out_data)
     {
         return 1;
     }
 
-    return generic_linked_list_remove_first(queue->list, data);
+    return generic_linked_list_remove_first(queue->list, out_data);
 }

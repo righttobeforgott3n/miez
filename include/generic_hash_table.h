@@ -3,30 +3,32 @@
 
 #include <stddef.h>
 
-typedef struct generic_hash_table_t *generic_hash_table;
+typedef struct generic_hash_table_t* generic_hash_table;
 
 int
-generic_hash_table_new(generic_hash_table *self, size_t (*hash)(void *), size_t capacity);
+generic_hash_table_new(size_t (*hash)(void*), size_t capacity,
+                       generic_hash_table* self_out);
 
 int
 generic_hash_table_free(generic_hash_table self);
 
 int
-generic_hash_table_insert(generic_hash_table self, void *key, void *item);
+generic_hash_table_insert(generic_hash_table self, void* key, void* item);
 
 int
-generic_hash_table_delete(generic_hash_table self, void *key, void **item);
+generic_hash_table_delete(generic_hash_table self, void* key, void** out_item);
 
 int
-generic_hash_table_get(generic_hash_table self, void *key, void **item);
+generic_hash_table_get(generic_hash_table self, void* key, void** out_item);
 
 int
-generic_hash_table_search(generic_hash_table self, void *item, void **key);
+generic_hash_table_search(generic_hash_table self, void* item, void** out_key);
 
 int
-generic_hash_table_get_capacity(generic_hash_table self, size_t *capacity);
+generic_hash_table_get_capacity(generic_hash_table self, size_t* out_capacity);
 
 int
-generic_hash_table_get_hash_function(generic_hash_table self, size_t (**hash_function)(void *));
+generic_hash_table_get_hash_function(generic_hash_table self,
+                                     size_t (**out_hash_function)(void*));
 
-#endif // GENERIC_HASH_TABLE_H
+#endif  // GENERIC_HASH_TABLE_H

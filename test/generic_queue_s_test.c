@@ -1,13 +1,13 @@
-#include "test_utils.h"
 #include "generic_queue_s.h"
-#include <stdlib.h>
+#include "test_utils.h"
 #include <pthread.h>
-#include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 struct thread_args_t
 {
-    
+
     size_t thread_id;
 
     generic_queue_s queue;
@@ -25,7 +25,10 @@ enqueue_thread(void* args)
     generic_queue_s q = t_args->queue;
     if (!q)
     {
-        fprintf(stderr, "Queue instance equals to NULL - Thread ID: %zu - Callback: enqueue_thread", t_args->thread_id);
+        fprintf(stderr,
+                "Queue instance equals to NULL - Thread ID: %zu - Callback: "
+                "enqueue_thread",
+                t_args->thread_id);
         return NULL;
     }
 
@@ -33,10 +36,10 @@ enqueue_thread(void* args)
     while (i < t_args->times)
     {
 
-        int *data = malloc(sizeof(int));
+        int* data = malloc(sizeof(int));
         *data = t_args->data;
         generic_queue_s_enqueue(t_args->queue, (void*) data);
-        
+
         ++i;
     }
 
@@ -52,7 +55,10 @@ dequeue_thread(void* args)
     generic_queue_s q = t_args->queue;
     if (!q)
     {
-        fprintf(stderr, "Queue instance equals to NULL - Thread ID: %zu - Callback: dequeue_thread", t_args->thread_id);
+        fprintf(stderr,
+                "Queue instance equals to NULL - Thread ID: %zu - Callback: "
+                "dequeue_thread",
+                t_args->thread_id);
         return NULL;
     }
 
@@ -61,12 +67,15 @@ dequeue_thread(void* args)
     while (i < t_args->times)
     {
 
-        void *data = NULL;
-        r = generic_queue_s_dequeue(t_args->queue, &data);        
-        
+        void* data = NULL;
+        r = generic_queue_s_dequeue(t_args->queue, &data);
+
         if (r)
         {
-            fprintf(stderr, "Error in dequeueing the Queue instance - Thread ID: %zu - Callback: dequeue_thread", t_args->thread_id);
+            fprintf(stderr,
+                    "Error in dequeueing the Queue instance - Thread ID: %zu - "
+                    "Callback: dequeue_thread",
+                    t_args->thread_id);
             return NULL;
         }
 
@@ -81,33 +90,55 @@ dequeue_thread(void* args)
     return NULL;
 }
 
-void *
-clear_queue_thread(void *args)
+void*
+clear_queue_thread(void* args)
 {
 
     struct thread_args_t* t_args = (struct thread_args_t*) args;
 
     size_t thread_id = t_args->thread_id;
 
-    printf("Thread ID: %zu - Callback: clear_queue_thread - Begin\n", thread_id);
+    printf("Thread ID: %zu - Callback: clear_queue_thread - Begin\n",
+           thread_id);
 
     generic_queue_s q = t_args->queue;
     if (!q)
     {
-        fprintf(stderr, "Queue instance equals to NULL - Thread ID: %zu - Callback: clear_queue_thread", thread_id);
+        fprintf(stderr,
+                "Queue instance equals to NULL - Thread ID: %zu - Callback: "
+                "clear_queue_thread",
+                thread_id);
         return NULL;
     }
 
+    int r = 0;
     size_t queue_size = 0;
-    while ((queue_size = generic_queue_s_size(q)))
+    while (1)
     {
 
-        void *data = NULL;
-        int r = generic_queue_s_dequeue(q, &data);
+        r = generic_queue_s_size(q, &queue_size);
+        if (r)
+        {
+            fprintf(stderr,
+                    "Error in retrieving the Queue size - Thread ID: %zu",
+                    t_args->thread_id);
+            break;
+        }
+
+        if (!queue_size)
+        {
+            printf("The Queue has been emptied.");
+            break;
+        }
+
+        void* data = NULL;
+        r = generic_queue_s_dequeue(q, &data);
 
         if (r)
         {
-            fprintf(stderr, "Error occured while dequeueing from the Queue Syn instance\n");
+            fprintf(
+                stderr,
+                "Error occured while dequeueing from the Queue Syn instance\n");
             return NULL;
         }
 
@@ -127,7 +158,8 @@ queue_s_concurrent_stress(int n_threads, int n_times_x_thread)
 
     TEST_SUITE("Concurrent Stress Test");
 
-    generic_queue_s q = generic_queue_s_new();
+    generic_queue_s q = NULL;
+    generic_queue_s_new(&q);
     TEST_ASSERT(q != NULL, "Queue is not NULL");
 
     int i = 0;
@@ -141,7 +173,7 @@ queue_s_concurrent_stress(int n_threads, int n_times_x_thread)
         thread_args[i].thread_id = i;
         thread_args[i].data = rand() * i + rand();
 
-        void *(*f)(void *) = NULL;
+        void* (*f)(void*) = NULL;
         if (i % 2 == 0)
         {
             f = dequeue_thread;
@@ -162,20 +194,23 @@ queue_s_concurrent_stress(int n_threads, int n_times_x_thread)
         pthread_join(threads[i], NULL);
         i++;
     }
-    
-    size_t q_size = generic_queue_s_size(q);
+    TEST_ASSERT(i == n_threads, "Thread have joined");
+
+    size_t q_size = 0;
+    generic_queue_s_size(q, &q_size);
     if (q_size)
     {
-        
+
         char message[32];
         sprintf(message, "Queue is not empty: %zu\n", q_size);
         TEST_ASSERT(q_size, message);
-    
+
         i = 0;
         pthread_t dequeue_threads[n_threads];
         while (i < n_threads)
         {
-            pthread_create(&dequeue_threads[i], NULL, clear_queue_thread, &thread_args[i]); 
+            pthread_create(&dequeue_threads[i], NULL, clear_queue_thread,
+                           &thread_args[i]);
             i++;
         }
 
@@ -186,7 +221,8 @@ queue_s_concurrent_stress(int n_threads, int n_times_x_thread)
             i++;
         }
 
-        size_t q_size_updated = generic_queue_s_size(q); 
+        size_t q_size_updated = 0;
+        generic_queue_s_size(q, &q_size_updated);
         TEST_ASSERT(!q_size_updated, "Queue is empty\n");
     }
     else
@@ -199,14 +235,13 @@ queue_s_concurrent_stress(int n_threads, int n_times_x_thread)
 }
 
 int
-main(int argc __attribute__((unused)), char **argv __attribute((unused)))
+main(int argc __attribute__((unused)), char** argv __attribute((unused)))
 {
 
     printf("\n");
     printf("*****************************************\n");
     printf("Begin Thread-Safe Queue Stress Test Suite\n");
     printf("*****************************************\n");
-
     int n_threads = 100;
     int n_times_x_thread = 10;
     queue_s_concurrent_stress(n_threads, n_times_x_thread);

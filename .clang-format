@@ -1,24 +1,8 @@
----
 # Allman Style C Formatter Configuration
 # This configuration enforces the Allman brace style for C code
 
-# Language specification
-Language: C
-
 # Allman Style: Opening and closing braces on separate lines
 BreakBeforeBraces: Allman
-BreakBeforeBraceWrapping:
-  AfterCaseLabel: true
-  AfterClass: true
-  AfterControlStatement: true
-  AfterEnum: true
-  AfterExternBlock: true
-  AfterFunction: true
-  AfterNamespace: true
-  AfterStruct: true
-  AfterUnion: true
-  BeforeCatch: true
-  BeforeElse: true
 
 # Indentation settings
 IndentWidth: 4
@@ -30,9 +14,6 @@ ColumnLimit: 80
 
 # Pointer alignment
 PointerAlignment: Left
-
-# Reference alignment
-ReferenceAlignment: Left
 
 # Spacing settings
 SpaceBeforeAssignmentOperators: true
@@ -47,7 +28,7 @@ AllowShortFunctionsOnASingleLine: None
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 
-# Function declaration style
+# Function declaration style - return type on separate line
 BreakAfterReturnType: All
 
 # Alignment settings
@@ -63,12 +44,8 @@ SpaceInEmptyParentheses: false
 BreakStringLiterals: true
 BreakBeforeBinaryOperators: NonAssignment
 
-# Parentheses
-RemoveBracesForControlStatements: false
-
 # Other settings
 InsertBraces: true
-Cpp11BracedListStyle: false
 
 # Sorted includes
 SortIncludes: CaseInsensitive

@@ -5,19 +5,19 @@
 
 typedef struct generic_queue_t* generic_queue;
 
-generic_queue
-generic_queue_new();
+int
+generic_queue_new(generic_queue* out_self);
 
-void
-generic_queue_free(generic_queue queue);
+int
+generic_queue_free(generic_queue self);
 
-size_t
-generic_queue_size(generic_queue queue);
+int
+generic_queue_size(generic_queue queue, size_t* out_size);
 
 int
 generic_queue_enqueue(generic_queue queue, void* data);
 
 int
-generic_queue_dequeue(generic_queue queue, void** data);
+generic_queue_dequeue(generic_queue queue, void** out_data);
 
-#endif // GENERIC_QUEUE_H
+#endif  // GENERIC_QUEUE_H

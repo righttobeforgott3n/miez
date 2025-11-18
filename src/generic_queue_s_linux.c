@@ -5,95 +5,103 @@
 
 struct generic_queue_s_t
 {
-    generic_queue queue;
+    generic_queue _generic_queue;
     pthread_mutex_t mutex;
 };
 
-generic_queue_s
-generic_queue_s_new()
-{
-
-    generic_queue_s queue_s = (generic_queue_s) malloc(
-        sizeof(struct generic_queue_s_t));
-
-    if (!queue_s)
-    {
-        return NULL;
-    }
-
-    queue_s->queue = generic_queue_new();
-    if (!queue_s->queue)
-    {
-        free(queue_s);
-        return NULL;
-    }
-
-    if (pthread_mutex_init(&queue_s->mutex, NULL) != 0)
-    {
-        generic_queue_free(queue_s->queue);
-        free(queue_s);
-        return NULL;
-    }
-
-    return queue_s;
-}
-
-void
-generic_queue_s_free(generic_queue_s queue)
-{
-
-    if (!queue)
-    {
-        return;
-    }
-
-    pthread_mutex_destroy(&queue->mutex);
-    generic_queue_free(queue->queue);
-    free(queue);
-}
-
-size_t
-generic_queue_s_size(generic_queue_s queue)
-{
-    if (!queue)
-    {
-        return 0;
-    }
-
-    pthread_mutex_lock(&queue->mutex);
-    size_t size = generic_queue_size(queue->queue);
-    pthread_mutex_unlock(&queue->mutex);
-
-    return size;
-}
-
 int
-generic_queue_s_enqueue(generic_queue_s queue, void* data)
+generic_queue_s_new(generic_queue_s* out_self)
 {
 
-    if (!queue)
+    if (!out_self)
     {
         return 1;
     }
 
-    pthread_mutex_lock(&queue->mutex);
-    int result = generic_queue_enqueue(queue->queue, data);
-    pthread_mutex_unlock(&queue->mutex);
+    *out_self = (generic_queue_s) malloc(sizeof(struct generic_queue_s_t));
+    if (!*out_self)
+    {
+        return -1;
+    }
+
+    int result = generic_queue_new(&((*out_self)->_generic_queue));
+    if (result && !(*out_self)->_generic_queue)
+    {
+        free(*out_self);
+        return result;
+    }
+
+    if (pthread_mutex_init(&(*out_self)->mutex, NULL) != 0)
+    {
+
+        generic_queue_free((*out_self)->_generic_queue);
+        free(out_self);
+
+        return -1;
+    }
+
+    return 0;
+}
+
+int
+generic_queue_s_free(generic_queue_s self)
+{
+
+    if (!self)
+    {
+        return 1;
+    }
+
+    pthread_mutex_destroy(&self->mutex);
+    generic_queue_free(self->_generic_queue);
+    free(self);
+
+    return 0;
+}
+
+int
+generic_queue_s_size(generic_queue_s self, size_t* out_size)
+{
+
+    if (!self)
+    {
+        return 1;
+    }
+
+    pthread_mutex_lock(&self->mutex);
+    int result = generic_queue_size(self->_generic_queue, out_size);
+    pthread_mutex_unlock(&self->mutex);
 
     return result;
 }
 
 int
-generic_queue_s_dequeue(generic_queue_s queue, void** data)
+generic_queue_s_enqueue(generic_queue_s self, void* data)
 {
-    if (!queue || !data)
+
+    if (!self)
     {
         return 1;
     }
 
-    pthread_mutex_lock(&queue->mutex);
-    int result = generic_queue_dequeue(queue->queue, data);
-    pthread_mutex_unlock(&queue->mutex);
+    pthread_mutex_lock(&self->mutex);
+    int result = generic_queue_enqueue(self->_generic_queue, data);
+    pthread_mutex_unlock(&self->mutex);
+
+    return result;
+}
+
+int
+generic_queue_s_dequeue(generic_queue_s self, void** out_data)
+{
+    if (!self || !out_data)
+    {
+        return 1;
+    }
+
+    pthread_mutex_lock(&self->mutex);
+    int result = generic_queue_dequeue(self->_generic_queue, out_data);
+    pthread_mutex_unlock(&self->mutex);
 
     return result;
 }

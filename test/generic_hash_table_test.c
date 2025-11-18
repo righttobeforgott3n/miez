@@ -22,7 +22,7 @@ generic_hash_table_new_and_free_test(void)
 
     size_t capacity = 3;
     generic_hash_table ht = NULL;
-    int result = generic_hash_table_new(&ht, hash_string, capacity);
+    int result = generic_hash_table_new(hash_string, capacity, &ht);
 
     TEST_ASSERT(ht != NULL, "Hash Table instance created successfully");
     TEST_ASSERT(result == 0, "Hash Table creation returns success");
@@ -46,7 +46,7 @@ generic_hash_table_insert_test(void)
     TEST_SUITE("Generic Hash Table Insert Test");
 
     generic_hash_table ht = NULL;
-    int result = generic_hash_table_new(&ht, hash_string, 10);
+    int result = generic_hash_table_new(hash_string, 10, &ht);
     TEST_ASSERT(ht != NULL, "Hash Table instance created successfully");
     TEST_ASSERT(result == 0, "Hash Table creation returns success");
 

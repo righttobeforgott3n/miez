@@ -11,31 +11,31 @@ struct generic_hash_table_t
 };
 
 int
-generic_hash_table_new(generic_hash_table *self, size_t (*hash_function)(void *), size_t capacity)
+generic_hash_table_new(size_t (*hash_function)(void *), size_t capacity, generic_hash_table *self_out)
 {
-    if (!self || !hash_function || !capacity)
+    if (!self_out || !hash_function || !capacity)
     {
         return 1;
     }
 
-    *self = malloc(sizeof(struct generic_hash_table_t));
-    if (!*self)
+    *self_out = malloc(sizeof(struct generic_hash_table_t));
+    if (!*self_out)
     {
         return -1;
     }
 
-    (*self)->_buffer = calloc(capacity, sizeof(void *));
-    if (!(*self)->_buffer)
+    (*self_out)->_buffer = calloc(capacity, sizeof(void *));
+    if (!(*self_out)->_buffer)
     {
         
-        free(*self);
-        *self = NULL;
+        free(*self_out);
+        *self_out = NULL;
         
         return -1;
     }
 
-    (*self)->_hash_function = hash_function;
-    (*self)->_buffer_capacity = capacity;
+    (*self_out)->_hash_function = hash_function;
+    (*self_out)->_buffer_capacity = capacity;
 
     return 0;
 }
