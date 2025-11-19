@@ -3,7 +3,6 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-#define STDIO_DEBUG 1
 #ifdef STDIO_DEBUG
 #include <stdio.h>
 #endif
