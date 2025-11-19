@@ -6,7 +6,7 @@ typedef struct
     int failed;
 } test_stats_t;
 
-static test_stats_t stats = { 0, 0 };
+static test_stats_t stats = {0, 0};
 
 #define TEST_ASSERT(condition, message)                                        \
     {                                                                          \
@@ -23,3 +23,17 @@ static test_stats_t stats = { 0, 0 };
     }
 
 #define TEST_SUITE(name) printf("\n[TEST SUITE] %s\n", name)
+
+size_t
+hash_string(void* str)
+{
+
+    size_t hash = 5381;
+    unsigned char* p = (unsigned char*) str;
+    while (*p)
+    {
+        hash = ((hash << 5) + hash) + *p++;
+    }
+
+    return hash;
+}
