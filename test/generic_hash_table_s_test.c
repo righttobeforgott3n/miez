@@ -1,6 +1,53 @@
 #include "generic_hash_table_s.h"
 #include "test_utils.h"
+#include <limits.h>
+#include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+struct thread_arg_t
+{
+    size_t thread_id;
+    generic_hash_table_s hts;
+    char* key;
+    int* item;
+};
+
+void*
+insert(void* arg)
+{
+
+    struct thread_arg_t* t_arg = (struct thread_arg_t*) arg;
+    generic_hash_table_s hts = t_arg->hts;
+    char* key = t_arg->key;
+    int* item = t_arg->item;
+    size_t thread_id = t_arg->thread_id;
+
+    if (!hts || !key)
+    {
+        fprintf(stderr, "Thread ID: %zu - insert - bad parameter\n", thread_id);
+        return NULL;
+    }
+
+    printf("Thread ID: %zu - insert - inserting (key: %s, item: %d)\n",
+           thread_id, key, *item);
+
+    int exit_code = generic_hash_table_s_insert(hts, (void*) key, (void*) item);
+    if (exit_code)
+    {
+        fprintf(stderr,
+                "Thread ID: %zu - insert - generic_hash_table_s_insert exit "
+                "code: %d\n",
+                thread_id, exit_code);
+        return NULL;
+    }
+
+    printf("Thread ID: %zu - insert - inserted (key: %s, item: %d)\n",
+           thread_id, key, *item);
+
+    return NULL;
+}
 
 void
 generic_hash_table_s_new_and_free()
@@ -51,6 +98,64 @@ generic_hash_table_s_insert_test()
     TEST_ASSERT(!exit_code, message);
 }
 
+void
+generic_hash_table_s_stress_test(size_t n_threads)
+{
+
+    char message[128];
+
+    generic_hash_table_s hts = NULL;
+    int exit_code = generic_hash_table_s_new(hash_string, 1000, &hts);
+    sprintf(message, "generic_hash_table_s_new - Exit Code should be zero: %d",
+            exit_code);
+    TEST_ASSERT(!exit_code, message);
+    TEST_ASSERT(hts, "Hash Table Syn instance is not NULL");
+
+    char* key_0 = "key_0";
+    char* key_1 = "key_1";
+
+    int* items[n_threads];
+    struct thread_arg_t thread_args[n_threads];
+    pthread_t threads[n_threads];
+    size_t i = 0;
+    while (i < n_threads)
+    {
+
+        thread_args[i].hts = hts;
+        thread_args[i].key = i % 2 == 0 ? key_0 : key_1;
+        thread_args[i].thread_id = i;
+        items[i] = (void*) malloc(sizeof(int));
+        *items[i] = rand() * ((int) i % INT_MAX) + rand();
+        thread_args[i].item = items[i];
+
+        pthread_create(&threads[i], NULL, insert, &thread_args[i]);
+
+        i++;
+    }
+
+    i = 0;
+    while (i < n_threads)
+    {
+        pthread_join(threads[i], NULL);
+        i++;
+    }
+
+    TEST_ASSERT(1, "Generic Hash Table Syn Stress Test is not crashed");
+
+    i = 0;
+    while (i < n_threads)
+    {
+        free(items[i++]);
+    }
+
+    exit_code = generic_hash_table_s_free(hts);
+    sprintf(message,
+            "generic_hash_table_s_stress_test - generic_hash_table_s_free exit "
+            "code should be zero: %d",
+            exit_code);
+    TEST_ASSERT(!exit_code, message);
+}
+
 int
 main(int argc __attribute__((unused)), char** argv __attribute__((unused)))
 {
@@ -59,6 +164,7 @@ main(int argc __attribute__((unused)), char** argv __attribute__((unused)))
 
     generic_hash_table_s_new_and_free();
     generic_hash_table_s_insert_test();
+    generic_hash_table_s_stress_test(100000);
 
     TEST_SUITE("End Hash Table Syn Test");
 
