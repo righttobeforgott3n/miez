@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 
+#define STDIO_DEBUG
 #ifdef STDIO_DEBUG
 #include <stdio.h>
 #endif
@@ -251,3 +252,149 @@ generic_hash_table_s_insert(generic_hash_table_s self, void* key, void* item)
 
     return 0;
 }
+
+// @todo add logs <- check why the macro injection is not working
+int
+generic_hash_table_s_delete(generic_hash_table_s self, void* key,
+                            void** out_item)
+{
+
+    if (!self || !key || !out_item)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "generic_hash_table_s_delete - bad parameter\n");
+#endif
+
+        return 1;
+    }
+
+    size_t capacity = 0;
+    int exit_code =
+        generic_hash_table_get_capacity(self->_generic_hash_table, &capacity);
+    if (exit_code)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr,
+                "generic_hash_table_s_delete - generic_hash_table_get_capacity "
+                "exit code: %d\n",
+                exit_code);
+#endif
+
+        return exit_code;
+    }
+    if (!capacity)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(
+            stderr,
+            "generic_hash_table_s_delete - capacity not valid, equals zero\n");
+#endif
+
+        return 2;
+    }
+
+    size_t (*hash_function)(void*) = NULL;
+    exit_code = generic_hash_table_get_hash_function(self->_generic_hash_table,
+                                                     &hash_function);
+    if (exit_code)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr,
+                "generic_hash_table_s_delete - "
+                "generic_hash_table_get_hash_function exit code: %d\n",
+                exit_code);
+#endif
+        return exit_code;
+    }
+    if (!hash_function)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr,
+                "generic_hash_table_s_delete - hash function equals NULL\n");
+#endif
+        return 2;
+    }
+
+    size_t hash = hash_function(key);
+    size_t index = hash % capacity;
+    pthread_mutex_t* m = *(self->_mutexes + index);
+    if (!m)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr,
+                "generic_hash_table_s_delete - key's mutex equals NULL\n");
+#endif
+        return 2;
+    }
+
+    exit_code = pthread_mutex_lock(m);
+    if (exit_code)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(
+            stderr,
+            "generic_hash_table_s_delete - pthread_mutex_lock exit code: %d\n",
+            exit_code);
+#endif
+        return exit_code;
+    }
+
+    exit_code =
+        generic_hash_table_delete(self->_generic_hash_table, key, out_item);
+    if (exit_code)
+    {
+
+        int exit_code_2 = pthread_mutex_unlock(m);
+        if (exit_code_2)
+        {
+
+#ifdef STDIO_DEBUG
+            fprintf(stderr,
+                    "generic_hash_table_s_delete - "
+                    "generic_hash_table_delete on error - pthread_mutex_unlock "
+                    "exit code: "
+                    "%d\n",
+                    exit_code_2);
+#endif
+            return exit_code_2;
+        }
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr,
+                "generic_hash_table_s_delete - generic_hash_table_delete exit "
+                "code: %d\n",
+                exit_code);
+#endif
+        return exit_code;
+    }
+
+    exit_code = pthread_mutex_unlock(m);
+    if (exit_code)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr,
+                "generic_hash_table_s_delete - pthread_mutex_unlock exit code: "
+                "%d\n",
+                exit_code);
+#endif
+        return exit_code;
+    }
+
+    return 0;
+}
+
+// @todo include "generic_hash_table_linux.c" ? It breaks the abstraction but
+// accessing directly to the internal structure could be more efficient, some
+// measurements must be taken. A better solution could be splitting the
+// generic_hash_table header into other two: the one public with no defintions
+// at all, the other with the struct definition; the latter will be included by
+// this module together with the public one.
+// @todo improve logs and standardize the format.

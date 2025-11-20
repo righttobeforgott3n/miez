@@ -70,6 +70,8 @@ generic_queue_s_size(generic_queue_s self, size_t* out_size)
 
     pthread_mutex_lock(&self->mutex);
     int result = generic_queue_size(self->_generic_queue, out_size);
+    // @todo add check on exit code, set out_size on NULL -> unlock -> return
+    // exit_code
     pthread_mutex_unlock(&self->mutex);
 
     return result;
@@ -86,6 +88,8 @@ generic_queue_s_enqueue(generic_queue_s self, void* data)
 
     pthread_mutex_lock(&self->mutex);
     int result = generic_queue_enqueue(self->_generic_queue, data);
+    // @todo add check on exit code -> unlock -> return
+    // exit_code
     pthread_mutex_unlock(&self->mutex);
 
     return result;
@@ -101,6 +105,8 @@ generic_queue_s_dequeue(generic_queue_s self, void** out_data)
 
     pthread_mutex_lock(&self->mutex);
     int result = generic_queue_dequeue(self->_generic_queue, out_data);
+    // @todo add check on exit code -> unlock -> set out_data on NULL -> return
+    // exit_code
     pthread_mutex_unlock(&self->mutex);
 
     return result;

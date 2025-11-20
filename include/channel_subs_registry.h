@@ -10,7 +10,7 @@
 typedef struct channel_subs_registry_t* channel_subs_registry;
 
 int
-channel_subs_registry_new(size_t capacity);
+channel_subs_registry_new(size_t capacity, channel_subs_registry* out_self);
 
 int
 channel_subs_registry_free(channel_subs_registry self);

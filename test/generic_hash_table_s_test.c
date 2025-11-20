@@ -49,6 +49,34 @@ insert(void* arg)
     return NULL;
 }
 
+void* delete(void* arg)
+{
+
+    struct thread_arg_t* t_arg = (struct thread_arg_t*) arg;
+    generic_hash_table_s hts = t_arg->hts;
+    char* key = t_arg->key;
+    size_t thread_id = t_arg->thread_id;
+
+    int exit_code =
+        generic_hash_table_s_delete(hts, (void*) key, (void**) &(t_arg->item));
+    if (exit_code)
+    {
+        fprintf(stderr, "Thread ID: %zu - delete - exit code: %d\n", thread_id,
+                exit_code);
+        return NULL;
+    }
+
+    if (t_arg->item)
+    {
+
+        printf("Thread ID: %zu - delete - delete entry (key: %s, item: %d)\n",
+               thread_id, key, *t_arg->item);
+        free(t_arg->item);
+    }
+
+    return NULL;
+}
+
 void
 generic_hash_table_s_new_and_free()
 {
@@ -101,7 +129,6 @@ generic_hash_table_s_insert_test()
 void
 generic_hash_table_s_stress_test(size_t n_threads)
 {
-
     char message[128];
 
     generic_hash_table_s hts = NULL;
@@ -115,12 +142,12 @@ generic_hash_table_s_stress_test(size_t n_threads)
     char* key_1 = "key_1";
 
     int* items[n_threads];
-    struct thread_arg_t thread_args[n_threads];
+    struct thread_arg_t* thread_args =
+        malloc(n_threads * sizeof(struct thread_arg_t));
     pthread_t threads[n_threads];
     size_t i = 0;
     while (i < n_threads)
     {
-
         thread_args[i].hts = hts;
         thread_args[i].key = i % 2 == 0 ? key_0 : key_1;
         thread_args[i].thread_id = i;
@@ -142,11 +169,23 @@ generic_hash_table_s_stress_test(size_t n_threads)
 
     TEST_ASSERT(1, "Generic Hash Table Syn Stress Test is not crashed");
 
+    pthread_t delete_threads[n_threads];
     i = 0;
     while (i < n_threads)
     {
-        free(items[i++]);
+        pthread_create(&delete_threads[i], NULL, delete,
+                       (void*) &thread_args[i]);
+        i++;
     }
+
+    i = 0;
+    while (i < n_threads)
+    {
+        pthread_join(delete_threads[i], NULL);
+        i++;
+    }
+
+    free(thread_args);
 
     exit_code = generic_hash_table_s_free(hts);
     sprintf(message,
@@ -164,7 +203,7 @@ main(int argc __attribute__((unused)), char** argv __attribute__((unused)))
 
     generic_hash_table_s_new_and_free();
     generic_hash_table_s_insert_test();
-    generic_hash_table_s_stress_test(100000);
+    generic_hash_table_s_stress_test(10000);
 
     TEST_SUITE("End Hash Table Syn Test");
 

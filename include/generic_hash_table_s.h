@@ -15,4 +15,8 @@ generic_hash_table_s_free(generic_hash_table_s self);
 int
 generic_hash_table_s_insert(generic_hash_table_s self, void* key, void* item);
 
+int
+generic_hash_table_s_delete(generic_hash_table_s self, void* key,
+                            void** out_item);
+
 #endif
