@@ -156,6 +156,10 @@ generic_hash_table_insert_get_free_flow_test(void)
 
     // Free
 
+    free(item_0);
+    item_0 = NULL;
+    free(item_1);
+    item_1 = NULL;
     result = generic_hash_table_free(ht);
     TEST_ASSERT(result == 0, "Hash Table have been freed successfully");
 }
