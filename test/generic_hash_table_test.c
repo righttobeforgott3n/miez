@@ -44,9 +44,9 @@ generic_hash_table_insert_with_free_item_function_as_NULL_test(void)
     char* key_1 = "key 1";
     int item_1 = 10;
 
-    result = generic_hash_table_insert(ht, key_0, &item_0, NULL);
+    result = generic_hash_table_insert(ht, key_0, &item_0, NULL, NULL);
     TEST_ASSERT(result == 0, "Hash Table has inserted the pair (\"key 0\", 3)");
-    result = generic_hash_table_insert(ht, key_1, &item_1, NULL);
+    result = generic_hash_table_insert(ht, key_1, &item_1, NULL, NULL);
     TEST_ASSERT(result == 0,
                 "Hash Table has inserted the pair (\"key 1\", 10)");
 
@@ -83,6 +83,27 @@ free_int(void* i)
     free(i);
 }
 
+int
+copy_int(void *i, void **out_i)
+{
+
+    if (!i || !out_i)
+    {
+        return 1;
+    }
+
+    int* new_i = malloc(sizeof(int));
+    if (!new_i)
+    {
+        return -1;
+    }
+
+    *new_i = *(int*) i;
+    *out_i = new_i;
+
+    return 0;
+}
+
 void
 generic_hash_table_insert_get_free_flow_test(void)
 {
@@ -106,9 +127,9 @@ generic_hash_table_insert_get_free_flow_test(void)
     int* item_1 = malloc(sizeof(int));
     *item_1 = 13;
 
-    result = generic_hash_table_insert(ht, key_0, item_0, free_int);
+    result = generic_hash_table_insert(ht, key_0, item_0, free_int, copy_int);
     TEST_ASSERT(result == 0, "Hash Table has inserted the pair (\"key 0\", 3)");
-    result = generic_hash_table_insert(ht, key_1, item_1, free_int);
+    result = generic_hash_table_insert(ht, key_1, item_1, free_int, copy_int);
     TEST_ASSERT(result == 0,
                 "Hash Table has inserted the pair (\"key 1\", 10)");
 
@@ -120,7 +141,7 @@ generic_hash_table_insert_get_free_flow_test(void)
     result = generic_hash_table_get(ht, key_0, (void**) &check_item_0);
     TEST_ASSERT(result == 0, "Hash Table completed successfully the get on "
                              "key: \"key 0\" operation");
-    TEST_ASSERT(check_item_0 == item_0,
+    TEST_ASSERT(check_item_0 != item_0,
                 "Item: (\"key 0\", 3) pointer has been validated");
     TEST_ASSERT(*check_item_0 == *item_0,
                 "Item: (\"key 0\", 3) value has been validated");
@@ -128,7 +149,7 @@ generic_hash_table_insert_get_free_flow_test(void)
     result = generic_hash_table_get(ht, key_1, (void**) &check_item_1);
     TEST_ASSERT(result == 0, "Hash Table completed successfully the get on "
                              "key: \"key 1\" operation");
-    TEST_ASSERT(check_item_1 == item_1,
+    TEST_ASSERT(check_item_1 != item_1,
                 "Item: (\"key 1\", 13) pointer has been validated");
     TEST_ASSERT(*check_item_1 == *item_1,
                 "Item: (\"key 1\", 13) value has been validated");
@@ -162,9 +183,9 @@ generic_hash_table_insert_tricky_flow_test(void)
     int* item_1 = malloc(sizeof(int));
     *item_1 = 13;
 
-    result = generic_hash_table_insert(ht, key_0, item_0, free_int);
+    result = generic_hash_table_insert(ht, key_0, item_0, free_int, copy_int);
     TEST_ASSERT(result == 0, "Hash Table has inserted the pair (\"key 0\", 3)");
-    result = generic_hash_table_insert(ht, key_1, item_1, free_int);
+    result = generic_hash_table_insert(ht, key_1, item_1, free_int, copy_int);
     TEST_ASSERT(result == 0,
                 "Hash Table has inserted the pair (\"key 1\", 10)");
 
@@ -176,7 +197,7 @@ generic_hash_table_insert_tricky_flow_test(void)
     result = generic_hash_table_get(ht, key_0, (void**) &check_item_0);
     TEST_ASSERT(result == 0, "Hash Table completed successfully the get on "
                              "key: \"key 0\" operation");
-    TEST_ASSERT(check_item_0 == item_0,
+    TEST_ASSERT(check_item_0 != item_0,
                 "Item: (\"key 0\", 3) pointer has been validated");
     TEST_ASSERT(*check_item_0 == *item_0,
                 "Item: (\"key 0\", 3) value has been validated");
@@ -184,7 +205,7 @@ generic_hash_table_insert_tricky_flow_test(void)
     result = generic_hash_table_get(ht, key_1, (void**) &check_item_1);
     TEST_ASSERT(result == 0, "Hash Table completed successfully the get on "
                              "key: \"key 1\" operation");
-    TEST_ASSERT(check_item_1 == item_1,
+    TEST_ASSERT(check_item_1 != item_1,
                 "Item: (\"key 1\", 13) pointer has been validated");
     TEST_ASSERT(*check_item_1 == *item_1,
                 "Item: (\"key 1\", 13) value has been validated");
@@ -194,6 +215,8 @@ generic_hash_table_insert_tricky_flow_test(void)
     // Force manual free of an item
     free(item_0);
     item_0 = NULL;
+    free(item_1);
+    item_1 = NULL;
 
     result = generic_hash_table_free(ht);
     TEST_ASSERT(result == 0, "Hash Table have been freed successfully");

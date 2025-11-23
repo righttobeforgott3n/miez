@@ -6,6 +6,7 @@ struct _hash_table_entry_meta_t
 
     void* _item;
     void (*_free_item_function)(void*);
+    int (*_deep_copy_item_function)(void*, void**);
 
     size_t* _hash;
 };
@@ -130,7 +131,8 @@ generic_hash_table_get_hash_function(generic_hash_table self,
 
 int
 generic_hash_table_insert(generic_hash_table self, void* key, void* item,
-                          void (*free_item_function)(void*))
+                          void (*free_item_function)(void*),
+                          int (*deep_copy_item_function)(void*, void**))
 {
 
     if (!self || !key)
@@ -140,6 +142,10 @@ generic_hash_table_insert(generic_hash_table self, void* key, void* item,
 
     size_t hash = self->_hash_function(key);
     size_t* index = (size_t*) malloc(sizeof(size_t));
+    if (!index)
+    {
+        return -1;
+    }
     *index = hash % self->_buffer_capacity;
 
     struct _hash_table_entry_meta_t* hash_table_entry_meta =
@@ -150,7 +156,26 @@ generic_hash_table_insert(generic_hash_table self, void* key, void* item,
         return -1;
     }
 
-    hash_table_entry_meta->_item = item;
+    if (deep_copy_item_function)
+    {
+
+        int exit_code =
+            deep_copy_item_function(item, &hash_table_entry_meta->_item);
+        if (exit_code)
+        {
+
+            free(index);
+            free(hash_table_entry_meta);
+
+            return exit_code;
+        }
+    }
+    else
+    {
+        hash_table_entry_meta->_item = item;
+    }
+
+    hash_table_entry_meta->_deep_copy_item_function = deep_copy_item_function;
     hash_table_entry_meta->_free_item_function = free_item_function;
     hash_table_entry_meta->_hash = index;
 
@@ -194,6 +219,7 @@ generic_hash_table_delete(generic_hash_table self, void* key)
     return 0;
 }
 
+// @details borrowed reference to item is returned.
 int
 generic_hash_table_get(generic_hash_table self, void* key, void** item)
 {
@@ -217,6 +243,4 @@ generic_hash_table_get(generic_hash_table self, void* key, void** item)
     return 0;
 }
 
-// @todo the tricky test showed that the hash table implementation do not own
-// the item completely; I changed my mind and the fully ownership must be
-// implemented.
+// @todo add canary system to both struct generic_hash_table_t and struct _hash_table_entry_meta_t
