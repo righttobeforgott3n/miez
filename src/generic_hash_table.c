@@ -73,7 +73,8 @@ generic_hash_table_free(generic_hash_table self)
             if (hash_table_entry_meta)
             {
 
-                if (hash_table_entry_meta->_free_item_function)
+                if (hash_table_entry_meta->_free_item_function
+                    && hash_table_entry_meta->_item)
                 {
                     hash_table_entry_meta->_free_item_function(
                         hash_table_entry_meta->_item);
@@ -215,3 +216,7 @@ generic_hash_table_get(generic_hash_table self, void* key, void** item)
 
     return 0;
 }
+
+// @todo the tricky test showed that the hash table implementation do not own
+// the item completely; I changed my mind and the fully ownership must be
+// implemented.
