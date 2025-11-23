@@ -1,10 +1,21 @@
 #include "generic_hash_table.h"
 #include <stdlib.h>
 
+struct _hash_table_entry_meta_t
+{
+
+    void* _item;
+    void (*_free_item_function)(void*);
+
+    size_t* _hash;
+};
+
 struct generic_hash_table_t
 {
+
     size_t (*_hash_function)(void*);
-    void** _buffer;
+
+    struct _hash_table_entry_meta_t** _buffer;
     size_t _buffer_capacity;
 };
 
@@ -12,6 +23,7 @@ int
 generic_hash_table_new(size_t (*hash_function)(void*), size_t capacity,
                        generic_hash_table* self_out)
 {
+
     if (!self_out || !hash_function || !capacity)
     {
         return 1;
@@ -23,7 +35,8 @@ generic_hash_table_new(size_t (*hash_function)(void*), size_t capacity,
         return -1;
     }
 
-    (*self_out)->_buffer = calloc(capacity, sizeof(void*));
+    (*self_out)->_buffer =
+        calloc(capacity, sizeof(struct _hash_table_entry_t*));
     if (!(*self_out)->_buffer)
     {
 
@@ -42,6 +55,7 @@ generic_hash_table_new(size_t (*hash_function)(void*), size_t capacity,
 int
 generic_hash_table_free(generic_hash_table self)
 {
+
     if (!self)
     {
         return 1;
@@ -49,6 +63,33 @@ generic_hash_table_free(generic_hash_table self)
 
     if (self->_buffer)
     {
+
+        size_t i = 0;
+        while (i < self->_buffer_capacity)
+        {
+
+            struct _hash_table_entry_meta_t* hash_table_entry_meta =
+                *(self->_buffer + i);
+            if (hash_table_entry_meta)
+            {
+
+                if (hash_table_entry_meta->_free_item_function)
+                {
+                    hash_table_entry_meta->_free_item_function(
+                        hash_table_entry_meta->_item);
+                    hash_table_entry_meta->_item = NULL;
+                }
+                if (hash_table_entry_meta->_hash)
+                {
+                    free(hash_table_entry_meta->_hash);
+                    hash_table_entry_meta->_hash = NULL;
+                }
+                free(hash_table_entry_meta);
+            }
+
+            i++;
+        }
+
         free(self->_buffer);
     }
 
@@ -87,7 +128,38 @@ generic_hash_table_get_hash_function(generic_hash_table self,
 }
 
 int
-generic_hash_table_insert(generic_hash_table self, void* key, void* item)
+generic_hash_table_insert(generic_hash_table self, void* key, void* item,
+                          void (*free_item_function)(void*))
+{
+
+    if (!self || !key)
+    {
+        return 1;
+    }
+
+    size_t hash = self->_hash_function(key);
+    size_t* index = (size_t*) malloc(sizeof(size_t));
+    *index = hash % self->_buffer_capacity;
+
+    struct _hash_table_entry_meta_t* hash_table_entry_meta =
+        (struct _hash_table_entry_meta_t*) malloc(
+            sizeof(struct _hash_table_entry_meta_t));
+    if (!hash_table_entry_meta)
+    {
+        return -1;
+    }
+
+    hash_table_entry_meta->_item = item;
+    hash_table_entry_meta->_free_item_function = free_item_function;
+    hash_table_entry_meta->_hash = index;
+
+    *(self->_buffer + *index) = hash_table_entry_meta;
+
+    return 0;
+}
+
+int
+generic_hash_table_delete(generic_hash_table self, void* key)
 {
 
     if (!self || !key)
@@ -97,30 +169,25 @@ generic_hash_table_insert(generic_hash_table self, void* key, void* item)
 
     size_t hash = self->_hash_function(key);
     size_t index = hash % self->_buffer_capacity;
-    *(self->_buffer + index) = item;
-
-    return 0;
-}
-
-int
-generic_hash_table_delete(generic_hash_table self, void* key, void** item)
-{
-
-    if (!self || !key || !item)
+    struct _hash_table_entry_meta_t* hash_table_entry_to_delete =
+        *(self->_buffer + index);
+    if (!hash_table_entry_to_delete)
     {
-        return 1;
+        return 0;
     }
 
-    size_t hash = self->_hash_function(key);
-    size_t index = hash % self->_buffer_capacity;
-    void* to_check = *(self->_buffer + index);
-
-    if (*item)
+    if (hash_table_entry_to_delete->_free_item_function)
     {
-        *item = to_check;
+        hash_table_entry_to_delete->_free_item_function(
+            hash_table_entry_to_delete->_item);
+        hash_table_entry_to_delete->_item = NULL;
     }
-
-    *item = to_check;
+    if (hash_table_entry_to_delete->_hash)
+    {
+        free(hash_table_entry_to_delete->_hash);
+        hash_table_entry_to_delete->_hash = NULL;
+    }
+    free(hash_table_entry_to_delete);
     *(self->_buffer + index) = NULL;
 
     return 0;
@@ -137,9 +204,14 @@ generic_hash_table_get(generic_hash_table self, void* key, void** item)
 
     size_t hash = self->_hash_function(key);
     size_t index = hash % self->_buffer_capacity;
-    void* to_check = *(self->_buffer + index);
+    struct _hash_table_entry_meta_t* hash_table_entry_meta =
+        *(self->_buffer + index);
+    if (!hash_table_entry_meta)
+    {
+        return 0;
+    }
 
-    *item = to_check;
+    *item = hash_table_entry_meta->_item;
 
     return 0;
 }
