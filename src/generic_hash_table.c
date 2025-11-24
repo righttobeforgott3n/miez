@@ -221,10 +221,11 @@ generic_hash_table_delete(generic_hash_table self, void* key)
 
 // @details borrowed reference to item is returned.
 int
-generic_hash_table_get(generic_hash_table self, void* key, void** item)
+generic_hash_table_get(generic_hash_table self, void* key, void** item,
+                       int (**out_deep_copy_function)(void*, void**))
 {
 
-    if (!self || !key || !item)
+    if (!self || !key || !item || !out_deep_copy_function)
     {
         return 1;
     }
@@ -239,8 +240,10 @@ generic_hash_table_get(generic_hash_table self, void* key, void** item)
     }
 
     *item = hash_table_entry_meta->_item;
+    *out_deep_copy_function = hash_table_entry_meta->_deep_copy_item_function;
 
     return 0;
 }
 
-// @todo add canary system to both struct generic_hash_table_t and struct _hash_table_entry_meta_t
+// @todo add canary system to both struct generic_hash_table_t and struct
+// _hash_table_entry_meta_t
