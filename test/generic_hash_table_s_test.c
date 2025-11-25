@@ -600,5 +600,5 @@ main(int argc __attribute__((unused)), char** argv __attribute__((unused)))
 
     TEST_SUITE("End Hash Table Syn Test");
 
-    return 0;
+    return stats.failed;
 }
