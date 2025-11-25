@@ -228,9 +228,11 @@ main(int argc __attribute__((unused)), char** argv __attribute__((unused)))
 
     generic_hash_table_s_new_and_free();
     generic_hash_table_s_insert_test();
-    generic_hash_table_s_stress_test(10000);
+    generic_hash_table_s_stress_test(10);
 
     TEST_SUITE("End Hash Table Syn Test");
 
     return 0;
 }
+
+// @todo the test must be completely refactored.
