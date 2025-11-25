@@ -13,10 +13,11 @@ int
 generic_hash_table_s_free(generic_hash_table_s self);
 
 int
-generic_hash_table_s_insert(generic_hash_table_s self, void* key, void* item);
+generic_hash_table_s_insert(generic_hash_table_s self, void* key, void* item,
+                            void (*free_item_function)(void*),
+                            int (*deep_copy_item_function)(void*, void**));
 
 int
-generic_hash_table_s_delete(generic_hash_table_s self, void* key,
-                            void** out_item);
+generic_hash_table_s_delete(generic_hash_table_s self, void* key);
 
 #endif

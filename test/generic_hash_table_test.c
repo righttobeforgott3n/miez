@@ -157,7 +157,8 @@ generic_hash_table_insert_get_free_flow_test(void)
     TEST_ASSERT(deep_copy == copy_int,
                 "Deep copy function has been validated for (\"key 0\", 3)\n");
 
-    result = generic_hash_table_get(ht, key_1, (void**) &check_item_1, &deep_copy);
+    result =
+        generic_hash_table_get(ht, key_1, (void**) &check_item_1, &deep_copy);
     TEST_ASSERT(result == 0, "Hash Table completed successfully the get on "
                              "key: \"key 1\" operation");
     TEST_ASSERT(check_item_1 != item_1,
@@ -212,23 +213,29 @@ generic_hash_table_insert_tricky_flow_test(void)
     int* check_item_1 = NULL;
     int (*deep_copy)(void*, void**) = NULL;
 
-    result = generic_hash_table_get(ht, key_0, (void**) &check_item_0, &deep_copy);
+    result =
+        generic_hash_table_get(ht, key_0, (void**) &check_item_0, &deep_copy);
     TEST_ASSERT(result == 0, "Hash Table completed successfully the get on "
                              "key: \"key 0\" operation");
     TEST_ASSERT(check_item_0 != item_0,
                 "Item: (\"key 0\", 3) pointer has been validated");
     TEST_ASSERT(*check_item_0 == *item_0,
                 "Item: (\"key 0\", 3) value has been validated");
-    TEST_ASSERT(deep_copy == copy_int, "Deep copy function has been validated for item: (\"key 0\", 3)\n");
+    TEST_ASSERT(
+        deep_copy == copy_int,
+        "Deep copy function has been validated for item: (\"key 0\", 3)\n");
 
-    result = generic_hash_table_get(ht, key_1, (void**) &check_item_1, &deep_copy);
+    result =
+        generic_hash_table_get(ht, key_1, (void**) &check_item_1, &deep_copy);
     TEST_ASSERT(result == 0, "Hash Table completed successfully the get on "
                              "key: \"key 1\" operation");
     TEST_ASSERT(check_item_1 != item_1,
                 "Item: (\"key 1\", 13) pointer has been validated");
     TEST_ASSERT(*check_item_1 == *item_1,
                 "Item: (\"key 1\", 13) value has been validated");
-    TEST_ASSERT(deep_copy == copy_int, "Deep copy function has been validated for item: (\"key 1\", 13)\n");
+    TEST_ASSERT(
+        deep_copy == copy_int,
+        "Deep copy function has been validated for item: (\"key 1\", 13)\n");
 
     // Free
 

@@ -14,6 +14,30 @@ struct thread_arg_t
     int* item;
 };
 
+int
+copy_int(void* item, void** out)
+{
+
+    if (!out)
+    {
+        return 1;
+    }
+
+    int* i = (int*) item;
+    int** out_i = (int**) out;
+
+    int* i_copy = (int*) malloc(sizeof(int));
+    if (!i_copy)
+    {
+        return -1;
+    }
+    *i_copy = *i;
+
+    *out_i = (void*) i_copy;
+
+    return 0;
+}
+
 void*
 insert(void* arg)
 {
@@ -33,7 +57,8 @@ insert(void* arg)
     printf("Thread ID: %zu - insert - inserting (key: %s, item: %d)\n",
            thread_id, key, *item);
 
-    int exit_code = generic_hash_table_s_insert(hts, (void*) key, (void*) item);
+    int exit_code = generic_hash_table_s_insert(hts, (void*) key, (void*) item,
+                                                free, copy_int);
     if (exit_code)
     {
         fprintf(stderr,
@@ -49,7 +74,8 @@ insert(void* arg)
     return NULL;
 }
 
-void* delete(void* arg)
+void*
+delete(void* arg)
 {
 
     struct thread_arg_t* t_arg = (struct thread_arg_t*) arg;
@@ -57,8 +83,7 @@ void* delete(void* arg)
     char* key = t_arg->key;
     size_t thread_id = t_arg->thread_id;
 
-    int exit_code =
-        generic_hash_table_s_delete(hts, (void*) key, (void**) &(t_arg->item));
+    int exit_code = generic_hash_table_s_delete(hts, (void*) key);
     if (exit_code)
     {
         fprintf(stderr, "Thread ID: %zu - delete - exit code: %d\n", thread_id,
@@ -113,8 +138,8 @@ generic_hash_table_s_insert_test()
 
     char* key_0 = "key_0";
     int value_0 = 33;
-    exit_code =
-        generic_hash_table_s_insert(hts, (void*) key_0, (void*) &value_0);
+    exit_code = generic_hash_table_s_insert(hts, (void*) key_0,
+                                            (void*) &value_0, free, copy_int);
     sprintf(message,
             "generic_hash_table_s_insert - Exit Code should be zero: %d",
             exit_code);
