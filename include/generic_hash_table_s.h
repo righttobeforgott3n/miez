@@ -10,7 +10,7 @@ generic_hash_table_s_new(size_t (*hash_function)(void*), size_t capacity,
                          generic_hash_table_s* out_self);
 
 int
-generic_hash_table_s_free(generic_hash_table_s self);
+generic_hash_table_s_free(generic_hash_table_s* self);
 
 int
 generic_hash_table_s_insert(generic_hash_table_s self, void* key, void* item,

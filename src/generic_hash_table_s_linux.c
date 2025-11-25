@@ -109,63 +109,57 @@ generic_hash_table_s_new(size_t (*hash_function)(void*), size_t capacity,
 }
 
 int
-generic_hash_table_s_free(generic_hash_table_s self)
+generic_hash_table_s_free(generic_hash_table_s* self)
 {
 
-    if (!self)
+    if (!self || !(*self))
     {
         return 1;
     }
 
     int exit_code = 0;
 
-    if (self->_mutexes)
+    if ((*self)->_mutexes)
     {
-
         size_t i = 0;
-        while (i < self->_capacity)
+        while (i < (*self)->_capacity)
         {
-
-            exit_code = pthread_mutex_destroy(self->_mutexes + i);
+            exit_code = pthread_mutex_destroy((*self)->_mutexes + i);
             if (exit_code)
             {
-
 #ifdef STDIO_DEBUG
                 fprintf(stderr,
                         "generic_hash_table_s_free - "
-                        "generic_hash_table_free failed in freeing mutex at "
-                        "index: %zu - exit code: %d",
+                        "pthread_mutex_destroy failed at index: %zu - exit "
+                        "code: %d\n",
                         i, exit_code);
-
 #endif
             }
-
             i++;
         }
+        free((*self)->_mutexes);
+        (*self)->_mutexes = NULL;
     }
 
-    if (self->_generic_hash_table)
+    if ((*self)->_generic_hash_table)
     {
-
-        exit_code = generic_hash_table_free(self->_generic_hash_table);
+        exit_code = generic_hash_table_free((*self)->_generic_hash_table);
         if (exit_code)
         {
-
 #ifdef STDIO_DEBUG
-            printf("generic_hash_table_s_free - "
-                   "generic_hash_table_free internal error");
-
+            fprintf(stderr, "generic_hash_table_s_free - "
+                            "generic_hash_table_free internal error\n");
 #endif
             return exit_code;
         }
     }
 
-    free(self);
+    free(*self);
+    *self = NULL;
 
     return exit_code;
 }
 
-// @todo the collision is not handled good: the item is not freed (this will be fixed with the chaining mechanism)
 int
 generic_hash_table_s_insert(generic_hash_table_s self, void* key, void* item,
                             void (*free_item_function)(void*),
@@ -198,6 +192,8 @@ generic_hash_table_s_insert(generic_hash_table_s self, void* key, void* item,
 
         return exit_code;
     }
+
+    generic_hash_table_delete(self->_generic_hash_table, key);
 
     exit_code =
         generic_hash_table_insert(self->_generic_hash_table, key, item,
@@ -324,4 +320,5 @@ generic_hash_table_s_delete(generic_hash_table_s self, void* key)
 }
 
 // @todo make operations atomic with a transactional-based approach.
+// @todo implement hash chaining.
 // @todo improve logs and standardize the format.
