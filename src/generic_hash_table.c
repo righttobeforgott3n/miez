@@ -394,5 +394,7 @@ generic_hash_table_delete(generic_hash_table self, void* key)
     return 0;
 }
 
+// @todo make the hash table chained.
+
 // @todo add canary system to both struct generic_hash_table_t and struct
 // _hash_table_entry_meta_t
