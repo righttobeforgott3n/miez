@@ -322,3 +322,45 @@ generic_hash_table_s_delete(generic_hash_table_s self, void* key)
 // @todo make operations atomic with a transactional-based approach.
 // @todo implement hash chaining.
 // @todo improve logs and standardize the format.
+
+// @bug
+/*
+double free | invalid free
+
+<=== Logs stack
+[TEST SUITE] Generic Hash Table Syn. Functional Stress Test
+  ✓ PASS: generic_hash_table_s_new returned success
+
+  ✓ PASS: generic_hash_table_s is not NULL
+
+  ✓ PASS: Generic Hash Table Syn Functional Stress - Phase 1 completed
+
+  ✓ PASS: Generic Hash Table Syn Functional Stress - Phase 2 completed
+
+  ✓ PASS: Generic Hash Table Syn Functional Stress - Phase 3 completed
+
+
+[TEST SUITE] Generic Hash Table Syn. Functional Stress Test
+  ✓ PASS: generic_hash_table_s_new returned success
+
+  ✓ PASS: generic_hash_table_s is not NULL
+
+  ✓ PASS: Generic Hash Table Syn Functional Stress - Phase 1 completed
+
+  ✓ PASS: Generic Hash Table Syn Functional Stress - Phase 2 completed
+
+  ✓ PASS: Generic Hash Table Syn Functional Stress - Phase 3 completed
+
+
+[TEST SUITE] Generic Hash Table Syn. Functional Stress Test
+  ✓ PASS: generic_hash_table_s_new returned success
+
+  ✓ PASS: generic_hash_table_s is not NULL
+
+  ✓ PASS: Generic Hash Table Syn Functional Stress - Phase 1 completed
+
+  ✓ PASS: Generic Hash Table Syn Functional Stress - Phase 2 completed
+
+free(): invalid pointer
+===>
+*/
