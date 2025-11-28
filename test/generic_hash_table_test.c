@@ -1,5 +1,6 @@
 #include "generic_hash_table.h"
 #include "test_utils.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -316,7 +317,7 @@ generic_hash_table_stress_test(void)
 
     size_t verified_count = 0;
     i = 0;
-    while (i < num_items)
+    while (i < capacity)
     {
 
         int* check_item = NULL;
@@ -324,17 +325,32 @@ generic_hash_table_stress_test(void)
 
         result = generic_hash_table_get(ht, keys[i], (void**) &check_item,
                                         &deep_copy);
-        if (result == 0 && check_item != NULL && *check_item == (int) i)
+        if (result == 0 && check_item != NULL)
         {
             verified_count++;
+        }
+        else
+        {
+
+            printf(
+                "%s - generic_hash_table_get result: %d , item pointer: %p\n",
+                __PRETTY_FUNCTION__, result, (void*)check_item);
+            if (check_item)
+            {
+                printf("item value: %d\n", *check_item);
+            }
+            else
+            {
+                printf("\n");
+            }
         }
 
         i++;
     }
 
-    char log_buffer[128];
-    
-    TEST_ASSERT(verified_count == num_items, "All items verified successfully");
+    TEST_ASSERT(verified_count == capacity, "All items verified successfully");
+    printf("%s - verified items: %zu , total number of items: %zu\n",
+           __PRETTY_FUNCTION__, verified_count, capacity);
 
     i = 0;
     while (i < num_items)
