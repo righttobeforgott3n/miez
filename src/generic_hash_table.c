@@ -365,10 +365,23 @@ generic_hash_table_delete(generic_hash_table self, void* key)
     size_t hash = self->_hash_function(key);
     size_t index = hash % self->_buffer_capacity;
 
-    if (!(self->_buffer + index)
-        && !(self->_buffer + index)->_free_item_function)
+    if (!(self->_buffer + index))
     {
-        // @todo add STDIO_DEBUG logs.
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - bucket of index %zu NULL\n", __PRETTY_FUNCTION__,
+                index);
+#endif
+        return -1;
+    }
+
+    if (!(self->_buffer + index)->_free_item_function)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - item free_function of bucket index %zu NULL\n",
+                __PRETTY_FUNCTION__, index);
+#endif
         return -1;
     }
 

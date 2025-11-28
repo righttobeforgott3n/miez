@@ -334,7 +334,7 @@ generic_hash_table_stress_test(void)
 
             printf(
                 "%s - generic_hash_table_get result: %d , item pointer: %p\n",
-                __PRETTY_FUNCTION__, result, (void*)check_item);
+                __PRETTY_FUNCTION__, result, (void*) check_item);
             if (check_item)
             {
                 printf("item value: %d\n", *check_item);
