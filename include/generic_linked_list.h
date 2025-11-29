@@ -25,4 +25,7 @@ generic_linked_list_remove_first(generic_linked_list self, void** out_data);
 int
 generic_linked_list_remove_last(generic_linked_list self, void** out_data);
 
+int
+generic_linked_list_remove(generic_linked_list self, size_t index, void **out_data);
+
 #endif  // GENERIC_LINKED_LIST_H

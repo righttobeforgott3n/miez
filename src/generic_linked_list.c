@@ -2,6 +2,11 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#define STDIO_DEBUG
+#ifdef STDIO_DEBUG
+#include <stdio.h>
+#endif
+
 struct node_t
 {
     void* data;
@@ -22,6 +27,11 @@ generic_linked_list_new(generic_linked_list* out_self)
 
     if (!out_self)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
         return 1;
     }
 
@@ -29,6 +39,12 @@ generic_linked_list_new(generic_linked_list* out_self)
         (generic_linked_list) malloc(sizeof(struct generic_linked_list_t));
     if (!*out_self)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - allocation failed for generic_linked_list_t\n",
+                __PRETTY_FUNCTION__);
+#endif
+
         return -1;
     }
 
@@ -38,6 +54,11 @@ generic_linked_list_new(generic_linked_list* out_self)
     if (!(*out_self)->head_guard || !(*out_self)->tail_guard)
     {
 
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - allocation failed for guard nodes\n",
+                __PRETTY_FUNCTION__);
+#endif
+
         free((*out_self)->head_guard);
         free((*out_self)->tail_guard);
         free(*out_self);
@@ -45,8 +66,10 @@ generic_linked_list_new(generic_linked_list* out_self)
         return -1;
     }
 
+    (*out_self)->head_guard->data = NULL;
     (*out_self)->head_guard->next = (*out_self)->tail_guard;
     (*out_self)->head_guard->prev = NULL;
+    (*out_self)->tail_guard->data = NULL;
     (*out_self)->tail_guard->prev = (*out_self)->head_guard;
     (*out_self)->tail_guard->next = NULL;
 
@@ -59,6 +82,10 @@ generic_linked_list_free(generic_linked_list self)
 
     if (!self)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
         return 1;
     }
 
@@ -83,8 +110,23 @@ int
 generic_linked_list_size(generic_linked_list self, size_t* out_size)
 {
 
-    if (!self || !out_size)
+    if (!self)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_size)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_size parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
         return 1;
     }
 
@@ -99,12 +141,23 @@ generic_linked_list_insert_first(generic_linked_list self, void* data)
 
     if (!self)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
         return 1;
     }
 
     struct node_t* new_node = (struct node_t*) malloc(sizeof(struct node_t));
     if (!new_node)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - allocation failed for new node\n",
+                __PRETTY_FUNCTION__);
+#endif
+
         return -1;
     }
 
@@ -124,12 +177,23 @@ generic_linked_list_insert_last(generic_linked_list self, void* data)
 
     if (!self)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
         return 1;
     }
 
     struct node_t* new_node = (struct node_t*) malloc(sizeof(struct node_t));
     if (!new_node)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - allocation failed for new node\n",
+                __PRETTY_FUNCTION__);
+#endif
+
         return -1;
     }
 
@@ -147,13 +211,34 @@ int
 generic_linked_list_remove_first(generic_linked_list self, void** out_data)
 {
 
-    if (!self || !out_data)
+    if (!self)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_data)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_data parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
         return 1;
     }
 
     if (self->size == 0)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - list is empty\n", __PRETTY_FUNCTION__);
+#endif
+
+        *out_data = NULL;
         return 0;
     }
 
@@ -172,13 +257,34 @@ int
 generic_linked_list_remove_last(generic_linked_list self, void** out_data)
 {
 
-    if (!self || !out_data)
+    if (!self)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_data)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_data parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
         return 1;
     }
 
     if (self->size == 0)
     {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - list is empty\n", __PRETTY_FUNCTION__);
+#endif
+
+        *out_data = NULL;
         return 0;
     }
 
@@ -189,6 +295,86 @@ generic_linked_list_remove_last(generic_linked_list self, void** out_data)
     self->size--;
 
     free(to_remove);
+
+    return 0;
+}
+
+int
+generic_linked_list_remove(generic_linked_list self, size_t index,
+                           void** out_data)
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_data)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_data parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (index >= self->size)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - index %zu out of bounds (size: %zu)\n",
+                __PRETTY_FUNCTION__, index, self->size);
+#endif
+
+        return 1;
+    }
+
+    struct node_t* to_delete = NULL;
+    size_t mid = self->size / 2;
+
+    if (index <= mid)
+    {
+
+        to_delete = self->head_guard->next;
+        for (size_t i = 0; i < index; i++)
+        {
+            to_delete = to_delete->next;
+        }
+    }
+    else
+    {
+
+        to_delete = self->tail_guard->prev;
+        for (size_t i = self->size - 1; i > index; i--)
+        {
+            to_delete = to_delete->prev;
+        }
+    }
+
+    if (to_delete == self->tail_guard || to_delete == self->head_guard)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - reached guard node (should not happen)\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    *out_data = to_delete->data;
+
+    to_delete->prev->next = to_delete->next;
+    to_delete->next->prev = to_delete->prev;
+
+    free(to_delete);
+    self->size--;
 
     return 0;
 }
