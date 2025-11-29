@@ -23,6 +23,12 @@ struct generic_linked_list_t
     int (*_copy_function)(void*, void**);
 };
 
+struct generic_linked_list_iterator_t
+{
+    generic_linked_list _list;
+    struct node_t* _current;
+};
+
 int
 generic_linked_list_new(generic_linked_list* out_self)
 {
@@ -595,3 +601,6 @@ generic_linked_list_remove(generic_linked_list self, size_t index,
 
     return 0;
 }
+
+// @todo move the generic_linked_list related modules into a separate repo and
+// include it through git sub-module.

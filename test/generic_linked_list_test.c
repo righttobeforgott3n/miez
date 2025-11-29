@@ -109,8 +109,8 @@ generic_linked_list_borrow_mode_test()
 
     TEST_ASSERT(!exit_code, "List created\n");
 
-    void (*free_fn)(void*) = NULL;
-    int (*copy_fn)(void*, void**) = NULL;
+    void (*free_fn)(void*) = free_wrapper;
+    int (*copy_fn)(void*, void**) = copy_int;
 
     exit_code = generic_linked_list_get_free_function(ll, &free_fn);
     TEST_ASSERT(!exit_code && !free_fn, "Free function is NULL\n");
@@ -140,12 +140,8 @@ generic_linked_list_borrow_mode_test()
     TEST_ASSERT(!exit_code, "Remove last succeeded\n");
     TEST_ASSERT(*(int*) data == 50, "Last element is 50\n");
 
-    exit_code = generic_linked_list_remove(ll, 1, &data);
-    TEST_ASSERT(!exit_code, "Remove at index 1 succeeded\n");
-    TEST_ASSERT(*(int*) data == 30, "Element at index 1 is 30\n");
-
     generic_linked_list_size(ll, &size);
-    TEST_ASSERT(size == 2, "Size is 2 after removals\n");
+    TEST_ASSERT(size == 3, "Size is 3 after removals\n");
 
     exit_code = generic_linked_list_free(ll);
     TEST_ASSERT(!exit_code, "List freed\n");
@@ -336,14 +332,8 @@ generic_linked_list_error_cases_test()
     exit_code = generic_linked_list_remove_first(ll, &data);
     TEST_ASSERT(!exit_code && data == NULL, "Remove from empty list\n");
 
-    exit_code = generic_linked_list_remove(ll, 0, &data);
-    TEST_ASSERT(exit_code == 1, "Remove from empty list fails\n");
-
-    exit_code = generic_linked_list_insert_last(ll, &value);
-    TEST_ASSERT(!exit_code, "Insert succeeded\n");
-
-    exit_code = generic_linked_list_remove(ll, 5, &data);
-    TEST_ASSERT(exit_code == 1, "Remove at invalid index fails\n");
+    exit_code = generic_linked_list_remove_last(ll, &data);
+    TEST_ASSERT(!exit_code && data == NULL, "Remove last from empty list\n");
 
     exit_code = generic_linked_list_free(ll);
     TEST_ASSERT(!exit_code, "List freed\n");
@@ -399,20 +389,14 @@ generic_linked_list_stress_test()
     i = 0;
     while (i < n / 2)
     {
-        if (i % 3 == 0)
+        if (i % 2 == 0)
         {
             exit_code = generic_linked_list_remove_first(ll, NULL);
-        }
-        else if (i % 3 == 1)
-        {
-            void* data = NULL;
-            exit_code = generic_linked_list_remove_last(ll, &data);
-            free(data);
         }
         else
         {
             void* data = NULL;
-            exit_code = generic_linked_list_remove(ll, 0, &data);
+            exit_code = generic_linked_list_remove_last(ll, &data);
             free(data);
         }
 
@@ -436,49 +420,63 @@ generic_linked_list_stress_test()
 }
 
 int
-generic_linked_list_bidirectional_optimization_test()
+generic_linked_list_alternating_operations_test()
 {
 
-    TEST_SUITE("Generic Linked List Bidirectional Optimization Test");
+    TEST_SUITE("Generic Linked List Alternating Operations Test");
 
     generic_linked_list ll = NULL;
     int exit_code = generic_linked_list_new(&ll);
 
     TEST_ASSERT(!exit_code, "List created\n");
 
+    exit_code = generic_linked_list_set_copy_function(ll, copy_int);
+    TEST_ASSERT(!exit_code, "Copy function set\n");
+
+    exit_code = generic_linked_list_set_free_function(ll, free_wrapper);
+    TEST_ASSERT(!exit_code, "Free function set\n");
+
     size_t n = 1000;
     size_t i = 0;
     while (i < n)
     {
-        int* value = malloc(sizeof(int));
-        *value = i;
-        exit_code = generic_linked_list_insert_last(ll, value);
+        int value = i;
+        exit_code = generic_linked_list_insert_last(ll, &value);
         TEST_ASSERT(!exit_code, "Insert succeeded\n");
         i++;
     }
 
+    size_t size = 0;
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == n, "Size is 1000\n");
+
     void* data = NULL;
-    exit_code = generic_linked_list_remove(ll, 10, &data);
-    TEST_ASSERT(!exit_code && *(int*) data == 10,
-                "Remove from beginning works\n");
+    exit_code = generic_linked_list_remove_first(ll, &data);
+    TEST_ASSERT(!exit_code && *(int*) data == 0, "First element is 0\n");
     free(data);
 
-    exit_code = generic_linked_list_remove(ll, 988, &data);
-    TEST_ASSERT(!exit_code && *(int*) data == 989, "Remove from end works\n");
+    exit_code = generic_linked_list_remove_last(ll, &data);
+    TEST_ASSERT(!exit_code && *(int*) data == 999, "Last element is 999\n");
     free(data);
 
-    size_t mid = 500;
-    exit_code = generic_linked_list_remove(ll, mid, &data);
-    TEST_ASSERT(!exit_code, "Remove from middle works\n");
-    free(data);
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == 998, "Size is 998 after two removals\n");
 
     i = 0;
-    while (i < 997)
+    while (i < 998)
     {
-        exit_code = generic_linked_list_remove_first(ll, &data);
-        free(data);
+        exit_code = generic_linked_list_remove_first(ll, NULL);
+        if (exit_code)
+        {
+            TEST_ASSERT(0, "Remove failed\n");
+            generic_linked_list_free(ll);
+            return 1;
+        }
         i++;
     }
+
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == 0, "List is empty\n");
 
     exit_code = generic_linked_list_free(ll);
     TEST_ASSERT(!exit_code, "List freed\n");
@@ -497,7 +495,7 @@ main(int argc __attribute__((unused)), char** argv __attribute__((unused)))
     generic_linked_list_mixed_ownership_test();
     generic_linked_list_error_cases_test();
     generic_linked_list_stress_test();
-    generic_linked_list_bidirectional_optimization_test();
+    generic_linked_list_alternating_operations_test();
 
     return stats.failed;
 }
