@@ -17,6 +17,14 @@ generic_linked_list_get_free_function(generic_linked_list self,
                                       void (**out_free_function)(void*));
 
 int
+generic_linked_list_set_copy_function(generic_linked_list self,
+                                      int (*copy_function)(void*, void**));
+
+int
+generic_linked_list_get_copy_function(generic_linked_list self,
+                                      int (**out_copy_function)(void*, void**));
+
+int
 generic_linked_list_free(generic_linked_list self);
 
 int
