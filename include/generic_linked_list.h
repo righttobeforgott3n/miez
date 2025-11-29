@@ -9,6 +9,14 @@ int
 generic_linked_list_new(generic_linked_list* out_self);
 
 int
+generic_linked_list_set_free_function(generic_linked_list self,
+                                      void (*free_function)(void*));
+
+int
+generic_linked_list_get_free_function(generic_linked_list self,
+                                      void (**out_free_function)(void*));
+
+int
 generic_linked_list_free(generic_linked_list self);
 
 int
@@ -16,6 +24,7 @@ generic_linked_list_size(generic_linked_list self, size_t* out_size);
 
 int
 generic_linked_list_insert_first(generic_linked_list self, void* data);
+
 int
 generic_linked_list_insert_last(generic_linked_list self, void* data);
 
@@ -26,6 +35,7 @@ int
 generic_linked_list_remove_last(generic_linked_list self, void** out_data);
 
 int
-generic_linked_list_remove(generic_linked_list self, size_t index, void **out_data);
+generic_linked_list_remove(generic_linked_list self, size_t index,
+                           void** out_data);
 
-#endif  // GENERIC_LINKED_LIST_H
+#endif

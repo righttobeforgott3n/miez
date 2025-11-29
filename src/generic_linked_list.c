@@ -16,9 +16,10 @@ struct node_t
 
 struct generic_linked_list_t
 {
-    size_t size;
-    struct node_t* head_guard;
-    struct node_t* tail_guard;
+    size_t _size;
+    struct node_t* _head_guard;
+    struct node_t* _tail_guard;
+    void (*_free_function)(void*);
 };
 
 int
@@ -48,11 +49,12 @@ generic_linked_list_new(generic_linked_list* out_self)
         return -1;
     }
 
-    (*out_self)->size = 0;
-    (*out_self)->head_guard = (struct node_t*) malloc(sizeof(struct node_t));
-    (*out_self)->tail_guard = (struct node_t*) malloc(sizeof(struct node_t));
+    (*out_self)->_size = 0;
+    (*out_self)->_free_function = NULL;
+    (*out_self)->_head_guard = (struct node_t*) malloc(sizeof(struct node_t));
+    (*out_self)->_tail_guard = (struct node_t*) malloc(sizeof(struct node_t));
 
-    if (!(*out_self)->head_guard || !(*out_self)->tail_guard)
+    if (!(*out_self)->_head_guard || !(*out_self)->_tail_guard)
     {
 
 #ifdef STDIO_DEBUG
@@ -60,8 +62,8 @@ generic_linked_list_new(generic_linked_list* out_self)
                 __PRETTY_FUNCTION__);
 #endif
 
-        free((*out_self)->head_guard);
-        free((*out_self)->tail_guard);
+        free((*out_self)->_head_guard);
+        free((*out_self)->_tail_guard);
         free(*out_self);
 
         *out_self = NULL;
@@ -69,17 +71,67 @@ generic_linked_list_new(generic_linked_list* out_self)
         return -1;
     }
 
-    (*out_self)->head_guard->data = NULL;
-    (*out_self)->head_guard->next = (*out_self)->tail_guard;
-    (*out_self)->head_guard->prev = NULL;
-    (*out_self)->tail_guard->data = NULL;
-    (*out_self)->tail_guard->prev = (*out_self)->head_guard;
-    (*out_self)->tail_guard->next = NULL;
+    (*out_self)->_head_guard->data = NULL;
+    (*out_self)->_head_guard->next = (*out_self)->_tail_guard;
+    (*out_self)->_head_guard->prev = NULL;
+    (*out_self)->_tail_guard->data = NULL;
+    (*out_self)->_tail_guard->prev = (*out_self)->_head_guard;
+    (*out_self)->_tail_guard->next = NULL;
 
     return 0;
 }
 
-// @todo adjust the free function: return items pointers or not?
+int
+generic_linked_list_set_free_function(generic_linked_list self,
+                                      void (*free_function)(void*))
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    self->_free_function = free_function;
+
+    return 0;
+}
+
+int
+generic_linked_list_get_free_function(generic_linked_list self,
+                                      void (**out_free_function)(void*))
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_free_function)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_free_function parameter NULL\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    *out_free_function = self->_free_function;
+
+    return 0;
+}
+
 int
 generic_linked_list_free(generic_linked_list self)
 {
@@ -94,20 +146,27 @@ generic_linked_list_free(generic_linked_list self)
         return 1;
     }
 
-    if (self->head_guard && self->tail_guard)
+    if (self->_head_guard && self->_tail_guard)
     {
 
-        struct node_t* current = self->head_guard->next;
-        while (current != self->tail_guard)
+        struct node_t* current = self->_head_guard->next;
+        while (current != self->_tail_guard)
         {
+
             struct node_t* next = current->next;
+
+            if (self->_free_function && current->data)
+            {
+                self->_free_function(current->data);
+            }
+
             free(current);
             current = next;
         }
     }
 
-    free(self->head_guard);
-    free(self->tail_guard);
+    free(self->_head_guard);
+    free(self->_tail_guard);
     free(self);
 
     return 0;
@@ -137,7 +196,7 @@ generic_linked_list_size(generic_linked_list self, size_t* out_size)
         return 1;
     }
 
-    *out_size = self->size;
+    *out_size = self->_size;
 
     return 0;
 }
@@ -169,11 +228,11 @@ generic_linked_list_insert_first(generic_linked_list self, void* data)
     }
 
     new_node->data = data;
-    new_node->next = self->head_guard->next;
-    self->head_guard->next->prev = new_node;
-    new_node->prev = self->head_guard;
-    self->head_guard->next = new_node;
-    self->size++;
+    new_node->next = self->_head_guard->next;
+    self->_head_guard->next->prev = new_node;
+    new_node->prev = self->_head_guard;
+    self->_head_guard->next = new_node;
+    self->_size++;
 
     return 0;
 }
@@ -205,11 +264,11 @@ generic_linked_list_insert_last(generic_linked_list self, void* data)
     }
 
     new_node->data = data;
-    new_node->prev = self->tail_guard->prev;
-    self->tail_guard->prev->next = new_node;
-    new_node->next = self->tail_guard;
-    self->tail_guard->prev = new_node;
-    self->size++;
+    new_node->prev = self->_tail_guard->prev;
+    self->_tail_guard->prev->next = new_node;
+    new_node->next = self->_tail_guard;
+    self->_tail_guard->prev = new_node;
+    self->_size++;
 
     return 0;
 }
@@ -228,32 +287,51 @@ generic_linked_list_remove_first(generic_linked_list self, void** out_data)
         return 1;
     }
 
-    if (!out_data)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - out_data parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    if (self->size == 0)
+    if (self->_size == 0)
     {
 
 #ifdef STDIO_DEBUG
         fprintf(stderr, "%s - list is empty\n", __PRETTY_FUNCTION__);
 #endif
 
-        *out_data = NULL;
+        if (out_data)
+        {
+            *out_data = NULL;
+        }
+
         return 0;
     }
 
-    struct node_t* to_remove = self->head_guard->next;
-    *out_data = to_remove->data;
-    self->head_guard->next = to_remove->next;
-    to_remove->next->prev = self->head_guard;
-    self->size--;
+    if (!out_data && !self->_free_function)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_data is NULL and _free_function is not set\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    struct node_t* to_remove = self->_head_guard->next;
+
+    if (!out_data && self->_free_function)
+    {
+
+        if (to_remove->data)
+        {
+            self->_free_function(to_remove->data);
+        }
+    }
+    else if (out_data)
+    {
+
+        *out_data = to_remove->data;
+    }
+
+    self->_head_guard->next = to_remove->next;
+    to_remove->next->prev = self->_head_guard;
+    self->_size--;
 
     free(to_remove);
 
@@ -274,32 +352,51 @@ generic_linked_list_remove_last(generic_linked_list self, void** out_data)
         return 1;
     }
 
-    if (!out_data)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - out_data parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    if (self->size == 0)
+    if (self->_size == 0)
     {
 
 #ifdef STDIO_DEBUG
         fprintf(stderr, "%s - list is empty\n", __PRETTY_FUNCTION__);
 #endif
 
-        *out_data = NULL;
+        if (out_data)
+        {
+            *out_data = NULL;
+        }
+
         return 0;
     }
 
-    struct node_t* to_remove = self->tail_guard->prev;
-    *out_data = to_remove->data;
-    self->tail_guard->prev = to_remove->prev;
-    to_remove->prev->next = self->tail_guard;
-    self->size--;
+    if (!out_data && !self->_free_function)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_data is NULL and _free_function is not set\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    struct node_t* to_remove = self->_tail_guard->prev;
+
+    if (!out_data && self->_free_function)
+    {
+
+        if (to_remove->data)
+        {
+            self->_free_function(to_remove->data);
+        }
+    }
+    else if (out_data)
+    {
+
+        *out_data = to_remove->data;
+    }
+
+    self->_tail_guard->prev = to_remove->prev;
+    to_remove->prev->next = self->_tail_guard;
+    self->_size--;
 
     free(to_remove);
 
@@ -321,34 +418,35 @@ generic_linked_list_remove(generic_linked_list self, size_t index,
         return 1;
     }
 
-    if (!out_data)
+    if (index >= self->_size)
     {
 
 #ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - out_data parameter NULL\n", __PRETTY_FUNCTION__);
+        fprintf(stderr, "%s - index %zu out of bounds (_size: %zu)\n",
+                __PRETTY_FUNCTION__, index, self->_size);
 #endif
 
         return 1;
     }
 
-    if (index >= self->size)
+    if (!out_data && !self->_free_function)
     {
 
 #ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - index %zu out of bounds (size: %zu)\n",
-                __PRETTY_FUNCTION__, index, self->size);
+        fprintf(stderr, "%s - out_data is NULL and _free_function is not set\n",
+                __PRETTY_FUNCTION__);
 #endif
 
         return 1;
     }
 
     struct node_t* to_delete = NULL;
-    size_t mid = self->size / 2;
+    size_t mid = self->_size / 2;
 
     if (index <= mid)
     {
 
-        to_delete = self->head_guard->next;
+        to_delete = self->_head_guard->next;
         for (size_t i = 0; i < index; i++)
         {
             to_delete = to_delete->next;
@@ -357,14 +455,14 @@ generic_linked_list_remove(generic_linked_list self, size_t index,
     else
     {
 
-        to_delete = self->tail_guard->prev;
-        for (size_t i = self->size - 1; i > index; i--)
+        to_delete = self->_tail_guard->prev;
+        for (size_t i = self->_size - 1; i > index; i--)
         {
             to_delete = to_delete->prev;
         }
     }
 
-    if (to_delete == self->tail_guard || to_delete == self->head_guard)
+    if (to_delete == self->_tail_guard || to_delete == self->_head_guard)
     {
 
 #ifdef STDIO_DEBUG
@@ -374,13 +472,25 @@ generic_linked_list_remove(generic_linked_list self, size_t index,
         return 1;
     }
 
-    *out_data = to_delete->data;
+    if (!out_data && self->_free_function)
+    {
+
+        if (to_delete->data)
+        {
+            self->_free_function(to_delete->data);
+        }
+    }
+    else if (out_data)
+    {
+
+        *out_data = to_delete->data;
+    }
 
     to_delete->prev->next = to_delete->next;
     to_delete->next->prev = to_delete->prev;
 
     free(to_delete);
-    self->size--;
+    self->_size--;
 
     return 0;
 }
