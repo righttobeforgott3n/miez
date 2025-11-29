@@ -511,100 +511,8 @@ generic_linked_list_remove_last(generic_linked_list self, void** out_data)
 }
 
 int
-generic_linked_list_remove(generic_linked_list self, size_t index,
-                           void** out_data)
-{
-
-    if (!self)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    if (index >= self->_size)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - index %zu out of bounds (_size: %zu)\n",
-                __PRETTY_FUNCTION__, index, self->_size);
-#endif
-
-        return 1;
-    }
-
-    if (!out_data && !self->_free_function)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - out_data is NULL and _free_function is not set\n",
-                __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    struct node_t* to_delete = NULL;
-    size_t mid = self->_size / 2;
-
-    if (index <= mid)
-    {
-
-        to_delete = self->_head_guard->next;
-        for (size_t i = 0; i < index; i++)
-        {
-            to_delete = to_delete->next;
-        }
-    }
-    else
-    {
-
-        to_delete = self->_tail_guard->prev;
-        for (size_t i = self->_size - 1; i > index; i--)
-        {
-            to_delete = to_delete->prev;
-        }
-    }
-
-    if (to_delete == self->_tail_guard || to_delete == self->_head_guard)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - reached guard node\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    if (!out_data && self->_free_function)
-    {
-
-        if (to_delete->data)
-        {
-            self->_free_function(to_delete->data);
-        }
-    }
-    else if (out_data)
-    {
-
-        *out_data = to_delete->data;
-    }
-
-    to_delete->prev->next = to_delete->next;
-    to_delete->next->prev = to_delete->prev;
-
-    free(to_delete);
-    self->_size--;
-
-    return 0;
-}
-
-int
-generic_linked_list_begin(generic_linked_list ll,
-                          generic_linked_list_iterator* out_self)
+generic_linked_list_iterator_begin(generic_linked_list ll,
+                                   generic_linked_list_iterator* out_self)
 {
 
     if (!ll)
@@ -650,8 +558,8 @@ generic_linked_list_begin(generic_linked_list ll,
 }
 
 int
-generic_linked_list_end(generic_linked_list ll,
-                        generic_linked_list_iterator* out_self)
+generic_linked_list_iterator_end(generic_linked_list ll,
+                                 generic_linked_list_iterator* out_self)
 {
 
     if (!ll)
@@ -697,8 +605,8 @@ generic_linked_list_end(generic_linked_list ll,
 }
 
 int
-generic_linked_list_reverse_begin(generic_linked_list ll,
-                                  generic_linked_list_iterator* out_self)
+generic_linked_list_iterator_reverse_begin(
+    generic_linked_list ll, generic_linked_list_iterator* out_self)
 {
 
     if (!out_self)
@@ -743,8 +651,8 @@ generic_linked_list_reverse_begin(generic_linked_list ll,
 }
 
 int
-generic_linked_list_reverse_end(generic_linked_list ll,
-                                generic_linked_list_iterator* out_self)
+generic_linked_list_iterator_reverse_end(generic_linked_list ll,
+                                         generic_linked_list_iterator* out_self)
 {
 
     if (!out_self)
@@ -789,6 +697,25 @@ generic_linked_list_reverse_end(generic_linked_list ll,
 }
 
 int
+generic_linked_list_iterator_free(generic_linked_list_iterator self)
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    free(self);
+
+    return 0;
+}
+
+int
 generic_linked_list_iterator_get(generic_linked_list_iterator self,
                                  void** out_data)
 {
@@ -826,6 +753,221 @@ generic_linked_list_iterator_get(generic_linked_list_iterator self,
     }
 
     *out_data = self->_current_node->data;
+
+    return 0;
+}
+
+int
+generic_linked_list_iterator_next(generic_linked_list_iterator self)
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (self->_current_node == self->_list->_tail_guard)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - already at end\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    self->_current_node = self->_current_node->next;
+
+    return 0;
+}
+
+int
+generic_linked_list_iterator_prev(generic_linked_list_iterator self)
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (self->_current_node == self->_list->_head_guard)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - already at rend\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    self->_current_node = self->_current_node->prev;
+
+    return 0;
+}
+
+int
+generic_linked_list_iterator_is_end(generic_linked_list_iterator self)
+{
+
+    if (!self)
+    {
+        return 1;
+    }
+
+    return !(self->_current_node == self->_list->_tail_guard);
+}
+
+int
+generic_linked_list_iterator_is_begin(generic_linked_list_iterator self)
+{
+
+    if (!self)
+    {
+        return 1;
+    }
+
+    return !(self->_current_node == self->_list->_head_guard);
+}
+
+int
+generic_linked_list_iterator_is_valid(generic_linked_list_iterator self)
+{
+
+    if (!self)
+    {
+        return 1;
+    }
+
+    if (self->_current_node == self->_list->_head_guard
+        || self->_current_node == self->_list->_tail_guard)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+int
+generic_linked_list_iterator_advance(generic_linked_list_iterator self,
+                                     size_t n)
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    size_t i = 0;
+    while (i < n && self->_current_node != self->_list->_tail_guard)
+    {
+        self->_current_node = self->_current_node->next;
+        i++;
+    }
+
+    return 0;
+}
+
+int
+generic_linked_list_iterator_reverse_advance(generic_linked_list_iterator self,
+                                             size_t n)
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    size_t i = 0;
+    while (i < n && self->_current_node != self->_list->_head_guard)
+    {
+        self->_current_node = self->_current_node->prev;
+        i++;
+    }
+
+    return 0;
+}
+
+int
+generic_linked_list_iterator_remove(generic_linked_list_iterator self,
+                                    void** out_data)
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (self->_current_node == self->_list->_head_guard
+        || self->_current_node == self->_list->_tail_guard)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - iterator at guard node\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_data && !self->_list->_free_function)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_data is NULL and _free_function is not set\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    struct node_t* to_remove = self->_current_node;
+    struct node_t* next_node = to_remove->next;
+
+    // @todo improve this if-else structure: I would like to make it atomic as
+    // possible.
+    if (!out_data && self->_list->_free_function)
+    {
+
+        if (to_remove->data)
+        {
+            self->_list->_free_function(to_remove->data);
+        }
+    }
+    else if (out_data)
+    {
+        *out_data = to_remove->data;
+    }
+
+    to_remove->prev->next = to_remove->next;
+    to_remove->next->prev = to_remove->prev;
+
+    free(to_remove);
+    self->_list->_size--;
+    self->_current_node = next_node;
 
     return 0;
 }

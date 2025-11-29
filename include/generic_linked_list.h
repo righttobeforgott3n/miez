@@ -45,20 +45,23 @@ generic_linked_list_remove_last(generic_linked_list self, void** out_data);
 typedef struct generic_linked_list_iterator_t* generic_linked_list_iterator;
 
 int
-generic_linked_list_begin(generic_linked_list ll,
-                          generic_linked_list_iterator* out_self);
+generic_linked_list_iterator_begin(generic_linked_list ll,
+                                   generic_linked_list_iterator* out_self);
 
 int
-generic_linked_list_end(generic_linked_list ll,
-                        generic_linked_list_iterator* out_self);
+generic_linked_list_iterator_end(generic_linked_list ll,
+                                 generic_linked_list_iterator* out_self);
 
 int
-generic_linked_list_reverse_begin(generic_linked_list ll,
-                                  generic_linked_list_iterator* out_self);
+generic_linked_list_iterator_reverse_begin(
+    generic_linked_list ll, generic_linked_list_iterator* out_self);
 
 int
-generic_linked_list_reverse_end(generic_linked_list ll,
-                                generic_linked_list_iterator* out_self);
+generic_linked_list_iterator_reverse_end(
+    generic_linked_list ll, generic_linked_list_iterator* out_self);
+
+int
+generic_linked_list_iterator_free(generic_linked_list_iterator self);
 
 int
 generic_linked_list_iterator_get(generic_linked_list_iterator self,
@@ -77,18 +80,19 @@ int
 generic_linked_list_iterator_is_end(generic_linked_list_iterator self);
 
 int
+generic_linked_list_iterator_is_begin(generic_linked_list_iterator self);
+
+int
+generic_linked_list_iterator_advance(generic_linked_list_iterator self,
+                                     size_t n);
+
+int
+generic_linked_list_iterator_reverse_advance(generic_linked_list_iterator self,
+                                             size_t n);
+
+int
 generic_linked_list_iterator_remove(generic_linked_list_iterator self,
-                                    generic_linked_list_iterator* out_next);
-
-int
-generic_linked_list_iterator_insert_before(
-    generic_linked_list_iterator self, void* data,
-    generic_linked_list_iterator* out_new_iter);
-
-int
-generic_linked_list_iterator_insert_after(
-    generic_linked_list_iterator self, void* data,
-    generic_linked_list_iterator* out_new_iter);
+                                    void** out_data);
 
 int
 generic_linked_list_iterator_distance(generic_linked_list_iterator start,
@@ -96,17 +100,14 @@ generic_linked_list_iterator_distance(generic_linked_list_iterator start,
                                       size_t* out_distance);
 
 int
-generic_linked_list_iterator_advance(generic_linked_list_iterator self,
-                                     size_t n);
-
-int
-generic_linked_list_iterator_find(generic_linked_list_iterator start,
+generic_linked_list_iterator_find(generic_linked_list_iterator begin,
                                   generic_linked_list_iterator end,
                                   void* target, int (*compare)(void*, void*),
                                   generic_linked_list_iterator* out_found);
 
 int
-generic_linked_list_iterator_free(generic_linked_list_iterator self);
+generic_linked_list_iterator_for_each(generic_linked_list_iterator self,
+                                      void (*apply)(void*));
 
 #endif
 

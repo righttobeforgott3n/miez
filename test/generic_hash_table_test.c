@@ -270,7 +270,7 @@ generic_hash_table_stress_test(void)
     TEST_ASSERT(ht != NULL, "Hash Table instance not NULL");
     TEST_ASSERT(result == 0, "Hash Table creation ended succcessfully");
 
-    size_t num_items = 1000;
+    size_t num_items = 100000;
     char** keys = malloc(sizeof(char*) * num_items);
     int** items = malloc(sizeof(int*) * num_items);
 
