@@ -2,6 +2,66 @@
 #include "test_utils.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+int
+copy_int(void* src, void** dst)
+{
+
+    if (!src || !dst)
+    {
+        return 1;
+    }
+
+    *dst = malloc(sizeof(int));
+    if (!*dst)
+    {
+        return -1;
+    }
+
+    *((int*) *dst) = *((int*) src);
+
+    return 0;
+}
+
+int
+copy_string(void* src, void** dst)
+{
+
+    if (!src || !dst)
+    {
+        return 1;
+    }
+
+    char* p_src = (char*) src;
+    size_t len = 0;
+    while (p_src[len])
+    {
+        len++;
+    }
+
+    *dst = malloc(len + 1);
+    if (!*dst)
+    {
+        return -1;
+    }
+
+    char* p_dst = (char*) *dst;
+    size_t i = 0;
+    while (i <= len)
+    {
+        p_dst[i] = p_src[i];
+        i++;
+    }
+
+    return 0;
+}
+
+void
+free_wrapper(void* ptr)
+{
+    free(ptr);
+}
 
 int
 generic_linked_list_new_and_free_test()
@@ -39,72 +99,389 @@ generic_linked_list_new_and_free_test()
 }
 
 int
-generic_linked_list_insert_and_remove_no_ownership_test(size_t n_elements)
+generic_linked_list_borrow_mode_test()
 {
 
-    TEST_SUITE("Generic Linked List Remove Test\n");
+    TEST_SUITE("Generic Linked List Borrow Mode Test");
 
     generic_linked_list ll = NULL;
     int exit_code = generic_linked_list_new(&ll);
-    if (exit_code)
+
+    TEST_ASSERT(!exit_code, "List created\n");
+
+    void (*free_fn)(void*) = NULL;
+    int (*copy_fn)(void*, void**) = NULL;
+
+    exit_code = generic_linked_list_get_free_function(ll, &free_fn);
+    TEST_ASSERT(!exit_code && !free_fn, "Free function is NULL\n");
+
+    exit_code = generic_linked_list_get_copy_function(ll, &copy_fn);
+    TEST_ASSERT(!exit_code && !copy_fn, "Copy function is NULL\n");
+
+    int values[5] = {10, 20, 30, 40, 50};
+    size_t i = 0;
+    while (i < 5)
     {
-        return 1;
+        exit_code = generic_linked_list_insert_last(ll, &values[i]);
+        TEST_ASSERT(!exit_code, "Insert last succeeded\n");
+        i++;
     }
 
-    size_t ll_size = 1;
-    exit_code = generic_linked_list_size(ll, &ll_size);
+    size_t size = 0;
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == 5, "Size is 5\n");
 
-    TEST_ASSERT(!exit_code, "Get Size operation ended with success\n");
-    TEST_ASSERT(!ll_size, "Generic Linked List size: zero\n");
+    void* data = NULL;
+    exit_code = generic_linked_list_remove_first(ll, &data);
+    TEST_ASSERT(!exit_code, "Remove first succeeded\n");
+    TEST_ASSERT(*(int*) data == 10, "First element is 10\n");
 
-    void (*free_function)(void*) = free;
-    exit_code = generic_linked_list_get_free_function(ll, &free_function);
+    exit_code = generic_linked_list_remove_last(ll, &data);
+    TEST_ASSERT(!exit_code, "Remove last succeeded\n");
+    TEST_ASSERT(*(int*) data == 50, "Last element is 50\n");
 
-    TEST_ASSERT(!exit_code, "Get Free Function operation ended with success\n");
-    TEST_ASSERT(!free_function, "Free Function is set to NULL\n");
+    exit_code = generic_linked_list_remove(ll, 1, &data);
+    TEST_ASSERT(!exit_code, "Remove at index 1 succeeded\n");
+    TEST_ASSERT(*(int*) data == 30, "Element at index 1 is 30\n");
 
-    int* elements[n_elements];
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == 2, "Size is 2 after removals\n");
+
+    exit_code = generic_linked_list_free(ll);
+    TEST_ASSERT(!exit_code, "List freed\n");
+
+    return 0;
+}
+
+int
+generic_linked_list_full_ownership_test()
+{
+
+    TEST_SUITE("Generic Linked List Full Ownership Test");
+
+    generic_linked_list ll = NULL;
+    int exit_code = generic_linked_list_new(&ll);
+
+    TEST_ASSERT(!exit_code, "List created\n");
+
+    exit_code = generic_linked_list_set_copy_function(ll, copy_int);
+    TEST_ASSERT(!exit_code, "Copy function set\n");
+
+    exit_code = generic_linked_list_set_free_function(ll, free_wrapper);
+    TEST_ASSERT(!exit_code, "Free function set\n");
+
     size_t i = 0;
-    while (n_elements > i)
+    while (i < 100)
     {
+        int value = i * 10;
+        exit_code = generic_linked_list_insert_last(ll, &value);
+        TEST_ASSERT(!exit_code, "Insert last with copy succeeded\n");
+        i++;
+    }
 
-        elements[i] = malloc(sizeof(int));
-        *elements[i] = i;
+    size_t size = 0;
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == 100, "Size is 100\n");
 
-        exit_code = generic_linked_list_insert_last(ll, elements[i]);
+    i = 0;
+    while (i < 50)
+    {
+        exit_code = generic_linked_list_remove_first(ll, NULL);
+        TEST_ASSERT(!exit_code, "Remove first with auto-free succeeded\n");
+        i++;
+    }
+
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == 50, "Size is 50 after removals\n");
+
+    exit_code = generic_linked_list_free(ll);
+    TEST_ASSERT(!exit_code, "List freed with remaining items\n");
+
+    return 0;
+}
+
+int
+generic_linked_list_copy_no_free_test()
+{
+
+    TEST_SUITE("Generic Linked List Copy Without Free Test");
+
+    generic_linked_list ll = NULL;
+    int exit_code = generic_linked_list_new(&ll);
+
+    TEST_ASSERT(!exit_code, "List created\n");
+
+    exit_code = generic_linked_list_set_copy_function(ll, copy_string);
+    TEST_ASSERT(!exit_code, "Copy function set\n");
+
+    char* strings[] = {"hello", "world", "test", "data"};
+    size_t i = 0;
+    while (i < 4)
+    {
+        exit_code = generic_linked_list_insert_first(ll, strings[i]);
+        TEST_ASSERT(!exit_code, "Insert first with copy succeeded\n");
+        i++;
+    }
+
+    size_t size = 0;
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == 4, "Size is 4\n");
+
+    void* data = NULL;
+    exit_code = generic_linked_list_remove_first(ll, &data);
+    TEST_ASSERT(!exit_code, "Remove first succeeded\n");
+    TEST_ASSERT(strcmp((char*) data, "data") == 0, "First element is 'data'\n");
+    free(data);
+
+    exit_code = generic_linked_list_remove_last(ll, &data);
+    TEST_ASSERT(!exit_code, "Remove last succeeded\n");
+    TEST_ASSERT(strcmp((char*) data, "hello") == 0,
+                "Last element is 'hello'\n");
+    free(data);
+
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == 2, "Size is 2\n");
+
+    exit_code = generic_linked_list_remove_first(ll, &data);
+    TEST_ASSERT(!exit_code, "Remove succeeded\n");
+    free(data);
+
+    exit_code = generic_linked_list_remove_first(ll, &data);
+    TEST_ASSERT(!exit_code, "Remove succeeded\n");
+    free(data);
+
+    exit_code = generic_linked_list_free(ll);
+    TEST_ASSERT(!exit_code, "Empty list freed\n");
+
+    return 0;
+}
+
+int
+generic_linked_list_mixed_ownership_test()
+{
+
+    TEST_SUITE("Generic Linked List Mixed Ownership Test");
+
+    generic_linked_list ll = NULL;
+    int exit_code = generic_linked_list_new(&ll);
+
+    TEST_ASSERT(!exit_code, "List created\n");
+
+    exit_code = generic_linked_list_set_copy_function(ll, copy_int);
+    TEST_ASSERT(!exit_code, "Copy function set\n");
+
+    exit_code = generic_linked_list_set_free_function(ll, free_wrapper);
+    TEST_ASSERT(!exit_code, "Free function set\n");
+
+    size_t i = 0;
+    while (i < 10)
+    {
+        int value = i;
+        exit_code = generic_linked_list_insert_last(ll, &value);
+        TEST_ASSERT(!exit_code, "Insert succeeded\n");
+        i++;
+    }
+
+    size_t size = 0;
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == 10, "Size is 10\n");
+
+    void* data = NULL;
+    exit_code = generic_linked_list_remove_first(ll, &data);
+    TEST_ASSERT(!exit_code && *(int*) data == 0, "Manual remove first\n");
+    free(data);
+
+    exit_code = generic_linked_list_remove_last(ll, &data);
+    TEST_ASSERT(!exit_code && *(int*) data == 9, "Manual remove last\n");
+    free(data);
+
+    exit_code = generic_linked_list_remove_first(ll, NULL);
+    TEST_ASSERT(!exit_code, "Auto-free remove first\n");
+
+    exit_code = generic_linked_list_remove_last(ll, NULL);
+    TEST_ASSERT(!exit_code, "Auto-free remove last\n");
+
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == 6, "Size is 6 after mixed removals\n");
+
+    exit_code = generic_linked_list_free(ll);
+    TEST_ASSERT(!exit_code, "List freed with remaining items\n");
+
+    return 0;
+}
+
+int
+generic_linked_list_error_cases_test()
+{
+
+    TEST_SUITE("Generic Linked List Error Cases Test");
+
+    generic_linked_list ll = NULL;
+    int exit_code = generic_linked_list_new(&ll);
+
+    TEST_ASSERT(!exit_code, "List created\n");
+
+    int value = 42;
+    exit_code = generic_linked_list_insert_first(ll, &value);
+    TEST_ASSERT(!exit_code, "Insert succeeded\n");
+
+    exit_code = generic_linked_list_remove_first(ll, NULL);
+    TEST_ASSERT(exit_code == 1,
+                "Remove with NULL out_data and no free function fails\n");
+
+    void* data = NULL;
+    exit_code = generic_linked_list_remove_first(ll, &data);
+    TEST_ASSERT(!exit_code, "Remove succeeded\n");
+
+    exit_code = generic_linked_list_remove_first(ll, &data);
+    TEST_ASSERT(!exit_code && data == NULL, "Remove from empty list\n");
+
+    exit_code = generic_linked_list_remove(ll, 0, &data);
+    TEST_ASSERT(exit_code == 1, "Remove from empty list fails\n");
+
+    exit_code = generic_linked_list_insert_last(ll, &value);
+    TEST_ASSERT(!exit_code, "Insert succeeded\n");
+
+    exit_code = generic_linked_list_remove(ll, 5, &data);
+    TEST_ASSERT(exit_code == 1, "Remove at invalid index fails\n");
+
+    exit_code = generic_linked_list_free(ll);
+    TEST_ASSERT(!exit_code, "List freed\n");
+
+    return 0;
+}
+
+int
+generic_linked_list_stress_test()
+{
+
+    TEST_SUITE("Generic Linked List Stress Test");
+
+    generic_linked_list ll = NULL;
+    int exit_code = generic_linked_list_new(&ll);
+
+    TEST_ASSERT(!exit_code, "List created\n");
+
+    exit_code = generic_linked_list_set_copy_function(ll, copy_int);
+    TEST_ASSERT(!exit_code, "Copy function set\n");
+
+    exit_code = generic_linked_list_set_free_function(ll, free_wrapper);
+    TEST_ASSERT(!exit_code, "Free function set\n");
+
+    size_t n = 10000;
+    size_t i = 0;
+    while (i < n)
+    {
+        int value = i;
+        if (i % 2 == 0)
+        {
+            exit_code = generic_linked_list_insert_first(ll, &value);
+        }
+        else
+        {
+            exit_code = generic_linked_list_insert_last(ll, &value);
+        }
+
         if (exit_code)
         {
-
-            TEST_ASSERT(0, "Error in generic_linked_list_insert_last\n");
-
-            size_t ii = 0;
-            while (ii < i)
-            {
-                free(elements[ii]);
-                ii++;
-            }
-
+            TEST_ASSERT(0, "Insert failed\n");
             generic_linked_list_free(ll);
-
             return 1;
         }
 
         i++;
     }
 
-    generic_linked_list_size(ll, &ll_size);
+    size_t size = 0;
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == n, "Size matches inserted elements\n");
 
-    TEST_ASSERT(n_elements == ll_size, "All the elements have been inserted\n");
-
-    // @todo remove all the elements.
-    
     i = 0;
-    while (i < n_elements)
+    while (i < n / 2)
     {
-        free(elements[i]);
+        if (i % 3 == 0)
+        {
+            exit_code = generic_linked_list_remove_first(ll, NULL);
+        }
+        else if (i % 3 == 1)
+        {
+            void* data = NULL;
+            exit_code = generic_linked_list_remove_last(ll, &data);
+            free(data);
+        }
+        else
+        {
+            void* data = NULL;
+            exit_code = generic_linked_list_remove(ll, 0, &data);
+            free(data);
+        }
+
+        if (exit_code)
+        {
+            TEST_ASSERT(0, "Remove failed\n");
+            generic_linked_list_free(ll);
+            return 1;
+        }
+
         i++;
     }
+
+    generic_linked_list_size(ll, &size);
+    TEST_ASSERT(size == n / 2, "Size is half after removals\n");
+
     exit_code = generic_linked_list_free(ll);
+    TEST_ASSERT(!exit_code, "List freed\n");
+
+    return 0;
+}
+
+int
+generic_linked_list_bidirectional_optimization_test()
+{
+
+    TEST_SUITE("Generic Linked List Bidirectional Optimization Test");
+
+    generic_linked_list ll = NULL;
+    int exit_code = generic_linked_list_new(&ll);
+
+    TEST_ASSERT(!exit_code, "List created\n");
+
+    size_t n = 1000;
+    size_t i = 0;
+    while (i < n)
+    {
+        int* value = malloc(sizeof(int));
+        *value = i;
+        exit_code = generic_linked_list_insert_last(ll, value);
+        TEST_ASSERT(!exit_code, "Insert succeeded\n");
+        i++;
+    }
+
+    void* data = NULL;
+    exit_code = generic_linked_list_remove(ll, 10, &data);
+    TEST_ASSERT(!exit_code && *(int*) data == 10,
+                "Remove from beginning works\n");
+    free(data);
+
+    exit_code = generic_linked_list_remove(ll, 988, &data);
+    TEST_ASSERT(!exit_code && *(int*) data == 989, "Remove from end works\n");
+    free(data);
+
+    size_t mid = 500;
+    exit_code = generic_linked_list_remove(ll, mid, &data);
+    TEST_ASSERT(!exit_code, "Remove from middle works\n");
+    free(data);
+
+    i = 0;
+    while (i < 997)
+    {
+        exit_code = generic_linked_list_remove_first(ll, &data);
+        free(data);
+        i++;
+    }
+
+    exit_code = generic_linked_list_free(ll);
+    TEST_ASSERT(!exit_code, "List freed\n");
 
     return 0;
 }
@@ -114,7 +491,13 @@ main(int argc __attribute__((unused)), char** argv __attribute__((unused)))
 {
 
     generic_linked_list_new_and_free_test();
-    generic_linked_list_insert_and_remove_no_ownership_test(1000);
+    generic_linked_list_borrow_mode_test();
+    generic_linked_list_full_ownership_test();
+    generic_linked_list_copy_no_free_test();
+    generic_linked_list_mixed_ownership_test();
+    generic_linked_list_error_cases_test();
+    generic_linked_list_stress_test();
+    generic_linked_list_bidirectional_optimization_test();
 
     return stats.failed;
 }
