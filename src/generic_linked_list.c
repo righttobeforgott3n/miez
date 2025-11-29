@@ -26,7 +26,7 @@ struct generic_linked_list_t
 struct generic_linked_list_iterator_t
 {
     generic_linked_list _list;
-    struct node_t* _current;
+    struct node_t* _current_node;
 };
 
 int
@@ -598,6 +598,234 @@ generic_linked_list_remove(generic_linked_list self, size_t index,
 
     free(to_delete);
     self->_size--;
+
+    return 0;
+}
+
+int
+generic_linked_list_begin(generic_linked_list ll,
+                          generic_linked_list_iterator* out_self)
+{
+
+    if (!ll)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - ll parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    struct generic_linked_list_iterator_t* self =
+        (struct generic_linked_list_iterator_t*) malloc(
+            sizeof(struct generic_linked_list_iterator_t));
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - allocation failed for iterator\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return -1;
+    }
+
+    self->_list = ll;
+    self->_current_node = ll->_head_guard->next;
+    *out_self = self;
+
+    return 0;
+}
+
+int
+generic_linked_list_end(generic_linked_list ll,
+                        generic_linked_list_iterator* out_self)
+{
+
+    if (!ll)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - ll parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    struct generic_linked_list_iterator_t* self =
+        (struct generic_linked_list_iterator_t*) malloc(
+            sizeof(struct generic_linked_list_iterator_t));
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - allocation failed for iterator\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return -1;
+    }
+
+    self->_list = ll;
+    self->_current_node = ll->_tail_guard;
+    *out_self = self;
+
+    return 0;
+}
+
+int
+generic_linked_list_reverse_begin(generic_linked_list ll,
+                                  generic_linked_list_iterator* out_self)
+{
+
+    if (!out_self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!ll)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - ll parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    struct generic_linked_list_iterator_t* self =
+        (struct generic_linked_list_iterator_t*) malloc(
+            sizeof(struct generic_linked_list_t));
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - allocation failed for iterator\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return -1;
+    }
+
+    self->_list = ll;
+    self->_current_node = ll->_tail_guard->prev;
+    *out_self = self;
+
+    return 0;
+}
+
+int
+generic_linked_list_reverse_end(generic_linked_list ll,
+                                generic_linked_list_iterator* out_self)
+{
+
+    if (!out_self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!ll)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - ll parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    struct generic_linked_list_iterator_t* self =
+        (struct generic_linked_list_iterator_t*) malloc(
+            sizeof(struct generic_linked_list_t));
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - allocation failed for iterator\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return -1;
+    }
+
+    self->_list = ll;
+    self->_current_node = ll->_head_guard;
+    *out_self = self;
+
+    return 0;
+}
+
+int
+generic_linked_list_iterator_get(generic_linked_list_iterator self,
+                                 void** out_data)
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_data)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_data parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (self->_current_node == self->_list->_head_guard
+        || self->_current_node == self->_list->_tail_guard)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - iterator at guard node\n", __PRETTY_FUNCTION__);
+#endif
+
+        *out_data = NULL;
+        return 1;
+    }
+
+    *out_data = self->_current_node->data;
 
     return 0;
 }

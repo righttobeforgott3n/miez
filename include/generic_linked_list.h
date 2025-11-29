@@ -53,12 +53,12 @@ generic_linked_list_end(generic_linked_list ll,
                         generic_linked_list_iterator* out_self);
 
 int
-generic_linked_list_rbegin(generic_linked_list ll,
-                           generic_linked_list_iterator* out_self);
+generic_linked_list_reverse_begin(generic_linked_list ll,
+                                  generic_linked_list_iterator* out_self);
 
 int
-generic_linked_list_rend(generic_linked_list ll,
-                         generic_linked_list_iterator* out_self);
+generic_linked_list_reverse_end(generic_linked_list ll,
+                                generic_linked_list_iterator* out_self);
 
 int
 generic_linked_list_iterator_get(generic_linked_list_iterator self,
