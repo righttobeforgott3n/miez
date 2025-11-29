@@ -51,6 +51,7 @@ generic_linked_list_new(generic_linked_list* out_self)
     (*out_self)->size = 0;
     (*out_self)->head_guard = (struct node_t*) malloc(sizeof(struct node_t));
     (*out_self)->tail_guard = (struct node_t*) malloc(sizeof(struct node_t));
+
     if (!(*out_self)->head_guard || !(*out_self)->tail_guard)
     {
 
@@ -62,6 +63,8 @@ generic_linked_list_new(generic_linked_list* out_self)
         free((*out_self)->head_guard);
         free((*out_self)->tail_guard);
         free(*out_self);
+
+        *out_self = NULL;
 
         return -1;
     }
@@ -76,6 +79,7 @@ generic_linked_list_new(generic_linked_list* out_self)
     return 0;
 }
 
+// @todo adjust the free function: return items pointers or not?
 int
 generic_linked_list_free(generic_linked_list self)
 {
@@ -86,17 +90,20 @@ generic_linked_list_free(generic_linked_list self)
 #ifdef STDIO_DEBUG
         fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
 #endif
+
         return 1;
     }
 
-    struct node_t* current = self->head_guard->next;
-    while (current != self->tail_guard)
+    if (self->head_guard && self->tail_guard)
     {
 
-        struct node_t* next = current->next;
-
-        free(current);
-        current = next;
+        struct node_t* current = self->head_guard->next;
+        while (current != self->tail_guard)
+        {
+            struct node_t* next = current->next;
+            free(current);
+            current = next;
+        }
     }
 
     free(self->head_guard);
@@ -361,8 +368,7 @@ generic_linked_list_remove(generic_linked_list self, size_t index,
     {
 
 #ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - reached guard node (should not happen)\n",
-                __PRETTY_FUNCTION__);
+        fprintf(stderr, "%s - reached guard node\n", __PRETTY_FUNCTION__);
 #endif
 
         return 1;
