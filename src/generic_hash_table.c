@@ -296,6 +296,7 @@ generic_hash_table_is_empty(generic_hash_table self)
     return self->_size == 0;
 }
 
+// @todo I need to insert the key-value pair, not only the value.
 int
 generic_hash_table_insert(generic_hash_table self, void* key, void* value)
 {
@@ -322,6 +323,37 @@ generic_hash_table_insert(generic_hash_table self, void* key, void* value)
         value);  // @note insert the last item to the head of the list to follow
                  // the temporal paradigm, maybe something better could be done.
     self->_size++;
+
+    return 0;
+}
+
+int
+generic_hash_table_get(generic_hash_table self, void* key, void** out_value)
+{
+
+    if (!self)
+    {
+        // @todo logs.
+        return 1;
+    }
+
+    if (!key)
+    {
+        // @todo logs.
+        return 1;
+    }
+
+    if (!out_value)
+    {
+        // @todo logs.
+        return 1;
+    }
+    
+    // @todo hash the key.
+    // @todo modulo capacity to get the bucket index.
+    // @todo improve it by buffering the iterator?
+    // @todo allocate the bucket's iterator from begin.
+    // @todo call the find on it.
 
     return 0;
 }
