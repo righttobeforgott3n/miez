@@ -1,60 +1,43 @@
 #include "generic_hash_table.h"
+#include "generic_linked_list.h"
 #include <stdlib.h>
 
-#define STDIO_DEBUG
 #ifdef STDIO_DEBUG
 #include <stdio.h>
 #endif
-
-struct _hash_table_entry_meta_t
-{
-    void* _item;
-    void (*_free_item_function)(void*);
-    int (*_deep_copy_item_function)(void*, void**);
-};
 
 struct generic_hash_table_t
 {
 
     size_t (*_hash_function)(void*);
-
-    struct _hash_table_entry_meta_t* _buffer;
-    size_t _buffer_capacity;
+    int (*_compare_function)(void*, void*);
+    size_t _n_buckets;
+    generic_linked_list* _buckets;
 };
 
 int
-generic_hash_table_new(size_t (*hash_function)(void*), size_t capacity,
-                       generic_hash_table* self_out)
+generic_hash_table_new(size_t (*hash_function)(void*),
+                       int (*compare_function)(void*, void*), size_t capacity,
+                       generic_hash_table* out_self)
 {
 
-    if (!self_out)
+    if (!out_self)
     {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - self_out parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
         return 1;
     }
 
     if (!hash_function)
     {
+        return 1;
+    }
 
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - hash_function parameter NULL\n",
-                __PRETTY_FUNCTION__);
-#endif
-
+    if (!compare_function)
+    {
         return 1;
     }
 
     if (!capacity)
     {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - capacity parameter 0\n", __PRETTY_FUNCTION__);
-#endif
-
         return 1;
     }
 
@@ -62,38 +45,45 @@ generic_hash_table_new(size_t (*hash_function)(void*), size_t capacity,
         sizeof(struct generic_hash_table_t));
     if (!self)
     {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr,
-                "%s - error during allocation of struct "
-                "generic_hash_table_t\n",
-                __PRETTY_FUNCTION__);
-#endif
-
         return -1;
     }
 
-    self->_buffer = (struct _hash_table_entry_meta_t*) calloc(
-        capacity, sizeof(struct _hash_table_entry_meta_t));
-    if (!self->_buffer)
+    self->_buckets =
+        (generic_linked_list*) malloc(sizeof(generic_linked_list) * capacity);
+    if (!self->_buckets)
+    {
+        return -1;
+    }
+
+    int exit_code = 0;
+
+    size_t i = 0;
+    while (i < capacity)
     {
 
-#ifdef STDIO_DEBUG
-        fprintf(stderr,
-                "%s - error during allocation of "
-                "internal buffer\n",
-                __PRETTY_FUNCTION__);
-#endif
+        exit_code = generic_linked_list_new(self->_buckets + i);
+        if (exit_code)
+        {
 
-        free(self);
-        return -1;
+            for (size_t j = 0; j < i; j++)
+            {
+                generic_linked_list_free(*(self->_buckets + j));
+            }
+
+            free(self->_buckets);
+            free(self);
+
+            return exit_code;
+        }
+
+        i++;
     }
-
-    self->_buffer_capacity = capacity;
     self->_hash_function = hash_function;
-    *self_out = self;
+    self->_compare_function = compare_function;
+    self->_n_buckets = capacity;
+    *out_self = self;
 
-    return 0;
+    return exit_code;
 }
 
 int
@@ -102,299 +92,66 @@ generic_hash_table_free(generic_hash_table self)
 
     if (!self)
     {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
         return 1;
     }
 
-    if (self->_buffer)
+    int first_error = 0;
+
+    size_t i = 0;
+    while (i < self->_n_buckets)
     {
 
-        size_t i = 0;
-        while (i < self->_buffer_capacity)
+        int exit_code = generic_linked_list_free(*(self->_buckets + i));
+        if (exit_code && !first_error)
         {
-
-            struct _hash_table_entry_meta_t* hash_table_entry_meta =
-                self->_buffer + i;
-
-            if (hash_table_entry_meta && hash_table_entry_meta->_item)
-            {
-
-                if (hash_table_entry_meta->_free_item_function)
-                {
-
-                    hash_table_entry_meta->_free_item_function(
-                        hash_table_entry_meta->_item);
-                    hash_table_entry_meta->_item = NULL;
-                }
-            }
-
-            i++;
+            first_error = exit_code;
         }
 
-        free(self->_buffer);
+        i++;
     }
-
+    free(self->_buckets);
     free(self);
 
-    return 0;
+    return first_error;
 }
 
 int
-generic_hash_table_get_capacity(generic_hash_table self, size_t* out_capacity)
+generic_hash_table_set_free_function(generic_hash_table self,
+                                     void (*free_function)(void*))
 {
 
     if (!self)
     {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
         return 1;
     }
 
-    if (!out_capacity)
+    int exit_code = 0;
+
+    size_t i = 0;
+    while (i < self->_n_buckets)
     {
 
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - out_capacity parameter NULL\n",
-                __PRETTY_FUNCTION__);
-#endif
+        exit_code = generic_linked_list_set_free_function(*(self->_buckets + i),
+                                                          free_function);
+        if (exit_code)
+        {
+            ;  // @todo log the warning but continue or ...
+        }
 
-        return 1;
+        i++;
     }
-
-    *out_capacity = self->_buffer_capacity;
-
-    return 0;
-}
-
-int
-generic_hash_table_get_hash_function(generic_hash_table self,
-                                     size_t (**out_hash_function)(void*))
-{
-
-    if (!self)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    if (!out_hash_function)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - out_hash_function parameter NULL\n",
-                __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    *out_hash_function = self->_hash_function;
 
     return 0;
 }
 
 int
-generic_hash_table_insert(generic_hash_table self, void* key, void* item,
-                          void (*free_item_function)(void*),
-                          int (*deep_copy_item_function)(void*, void**))
-{
-
-    if (!self)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-        return 1;
-    }
-
-    if (!key)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - key parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-        return 1;
-    }
-
-    if (!free_item_function)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - free_item_function parameter NULL\n",
-                __PRETTY_FUNCTION__);
-#endif
-        return 1;
-    }
-
-    if (!deep_copy_item_function)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - deep_copy_item_function parameter NULL\n",
-                __PRETTY_FUNCTION__);
-#endif
-        return 1;
-    }
-
-    size_t hash = self->_hash_function(key);
-    size_t index = hash % self->_buffer_capacity;
-
-    void* new_item = NULL;
-    int exit_code = deep_copy_item_function(item, &new_item);
-    if (exit_code)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - deep_copy_item_function failed with code %d\n",
-                __PRETTY_FUNCTION__, exit_code);
-#endif
-
-        return exit_code;
-    }
-
-    if ((self->_buffer + index)->_item
-        && (self->_buffer + index)->_free_item_function)
-    {
-        (self->_buffer + index)
-            ->_free_item_function((self->_buffer + index)->_item);
-    }
-
-    (self->_buffer + index)->_item = new_item;
-    (self->_buffer + index)->_free_item_function = free_item_function;
-    (self->_buffer + index)->_deep_copy_item_function = deep_copy_item_function;
-
-    return 0;
-}
+generic_hash_table_get_free_function(generic_hash_table self,
+                                     void (**out_free_function)(void*));
 
 int
-generic_hash_table_get(generic_hash_table self, void* key, void** out_item,
-                       int (**out_deep_copy_function)(void*, void**))
-{
-
-    if (!self)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    if (!key)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - key parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    if (!out_item)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - key parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    if (!out_deep_copy_function)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - key parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    size_t hash = self->_hash_function(key);
-    size_t index = hash % self->_buffer_capacity;
-
-    if (!(self->_buffer + index))
-    {
-        // @todo add STDIO_DEBUG logs.
-        return -1;
-    }
-
-    *out_item = (self->_buffer + index)->_item;
-    *out_deep_copy_function = (self->_buffer + index)->_deep_copy_item_function;
-
-    return 0;
-}
+generic_hash_table_set_copy_function(generic_hash_table self,
+                                     int (*copy_function)(void*, void**));
 
 int
-generic_hash_table_delete(generic_hash_table self, void* key)
-{
-
-    if (!self)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    if (!key)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - key parameter NULL\n", __PRETTY_FUNCTION__);
-#endif
-
-        return 1;
-    }
-
-    size_t hash = self->_hash_function(key);
-    size_t index = hash % self->_buffer_capacity;
-
-    if (!(self->_buffer + index))
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - bucket of index %zu NULL\n", __PRETTY_FUNCTION__,
-                index);
-#endif
-        return -1;
-    }
-
-    if (!(self->_buffer + index)->_free_item_function)
-    {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - item free_function of bucket index %zu NULL\n",
-                __PRETTY_FUNCTION__, index);
-#endif
-        return -1;
-    }
-
-    (self->_buffer + index)
-        ->_free_item_function((self->_buffer + index)->_item);
-    (self->_buffer + index)->_item = NULL;
-    (self->_buffer + index)->_deep_copy_item_function = NULL;
-    (self->_buffer + index)->_free_item_function = NULL;
-
-    return 0;
-}
-
-// @todo make the hash table chained.
-
-// @todo add canary system to both struct generic_hash_table_t and struct
-// _hash_table_entry_meta_t
+generic_hash_table_get_copy_function(generic_hash_table self,
+                                     int (**out_copy_function)(void*, void**));
