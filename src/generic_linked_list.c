@@ -261,6 +261,23 @@ generic_linked_list_size(generic_linked_list self, size_t* out_size)
 }
 
 int
+generic_linked_list_is_empty(generic_linked_list self)
+{
+
+    if (!self)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - self parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return -1;
+    }
+
+    return self->_size == 0 ? 1 : 0;
+}
+
+int
 generic_linked_list_insert_first(generic_linked_list self, void* data)
 {
 

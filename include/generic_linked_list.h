@@ -31,6 +31,9 @@ int
 generic_linked_list_size(generic_linked_list self, size_t* out_size);
 
 int
+generic_linked_list_is_empty(generic_linked_list self);
+
+int
 generic_linked_list_insert_first(generic_linked_list self, void* data);
 
 int
