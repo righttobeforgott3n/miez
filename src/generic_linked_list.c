@@ -972,5 +972,259 @@ generic_linked_list_iterator_remove(generic_linked_list_iterator self,
     return 0;
 }
 
+int
+generic_linked_list_iterator_distance(generic_linked_list_iterator begin,
+                                      generic_linked_list_iterator end,
+                                      size_t* out_distance)
+{
+
+    if (!begin)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - begin parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!end)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - end parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_distance)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_distance parameter NULL\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (begin->_list != end->_list)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - iterators from different lists\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    size_t distance = 0;
+    struct node_t* current = begin->_current_node;
+    while (current && current != end->_current_node)
+    {
+
+        if (current == begin->_list->_tail_guard)
+        {
+
+#ifdef STDIO_DEBUG
+            fprintf(stderr, "%s - end not reachable from begin\n",
+                    __PRETTY_FUNCTION__);
+#endif
+
+            return 1;
+        }
+
+        if (current != begin->_list->_head_guard)
+        {
+            distance++;
+        }
+
+        current = current->next;
+    }
+
+    *out_distance = distance;
+
+    return 0;
+}
+
+int
+generic_linked_list_iterator_find(generic_linked_list_iterator begin,
+                                  generic_linked_list_iterator end,
+                                  void* target, int (*compare)(void*, void*),
+                                  generic_linked_list_iterator* out_found)
+{
+
+    if (!begin)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - begin parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!end)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - end parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!compare)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - compare parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!out_found)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - out_found parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (begin->_list != end->_list)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - iterators from different lists\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    struct node_t* current = begin->_current_node;
+    while (current && current != end->_current_node)
+    {
+
+        if (current == begin->_list->_head_guard
+            || current == begin->_list->_tail_guard)
+        {
+            current = current->next;
+            continue;
+        }
+
+        if (compare(current->data, target) == 0)
+        {
+
+            struct generic_linked_list_iterator_t* found =
+                (struct generic_linked_list_iterator_t*) malloc(
+                    sizeof(struct generic_linked_list_iterator_t));
+
+            if (!found)
+            {
+
+#ifdef STDIO_DEBUG
+                fprintf(stderr, "%s - allocation failed for iterator\n",
+                        __PRETTY_FUNCTION__);
+#endif
+
+                return -1;
+            }
+
+            found->_list = begin->_list;
+            found->_current_node = current;
+            *out_found = found;
+
+            return 0;
+        }
+
+        current = current->next;
+    }
+
+    struct generic_linked_list_iterator_t* not_found =
+        (struct generic_linked_list_iterator_t*) malloc(
+            sizeof(struct generic_linked_list_iterator_t));
+
+    if (!not_found)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - allocation failed for iterator\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return -1;
+    }
+
+    not_found->_list = end->_list;
+    not_found->_current_node = end->_current_node;
+    *out_found = not_found;
+
+    return 0;
+}
+
+int
+generic_linked_list_iterator_for_each(generic_linked_list_iterator begin,
+                                      generic_linked_list_iterator end,
+                                      void (*apply)(void*))
+{
+
+    if (!begin)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - begin parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!end)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - end parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (!apply)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - apply parameter NULL\n", __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    if (begin->_list != end->_list)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - iterators from different lists\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return 1;
+    }
+
+    struct node_t* current = begin->_current_node;
+    while (current && current != end->_current_node
+           && current != end->_list->_tail_guard)
+    {
+        apply(current->data);
+        current = current->next;
+    }
+
+    return 0;
+}
+
 // @todo move the generic_linked_list related modules into a separate repo and
 // include it through git sub-module.

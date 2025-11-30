@@ -95,7 +95,7 @@ generic_linked_list_iterator_remove(generic_linked_list_iterator self,
                                     void** out_data);
 
 int
-generic_linked_list_iterator_distance(generic_linked_list_iterator start,
+generic_linked_list_iterator_distance(generic_linked_list_iterator begin,
                                       generic_linked_list_iterator end,
                                       size_t* out_distance);
 
@@ -106,10 +106,13 @@ generic_linked_list_iterator_find(generic_linked_list_iterator begin,
                                   generic_linked_list_iterator* out_found);
 
 int
-generic_linked_list_iterator_for_each(generic_linked_list_iterator self,
+generic_linked_list_iterator_for_each(generic_linked_list_iterator begin,
+                                      generic_linked_list_iterator end,
                                       void (*apply)(void*));
 
 #endif
+
+// @todo implement insert_after and insert_before.s
 
 // @todo move the generic_linked_list related modules into a separate repo and
 // include it through git sub-module.
