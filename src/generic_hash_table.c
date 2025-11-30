@@ -12,6 +12,7 @@ struct generic_hash_table_t
     size_t (*_hash_function)(void*);
     int (*_compare_function)(void*, void*);
     size_t _n_buckets;
+    size_t _size;
     generic_linked_list* _buckets;
     void (*_free_function)(void*);
     int (*_copy_function)(void*, void**);
@@ -88,6 +89,7 @@ generic_hash_table_new(size_t (*hash_function)(void*),
     self->_hash_function = hash_function;
     self->_compare_function = compare_function;
     self->_n_buckets = capacity;
+    self->_size = 0;
     self->_free_function = NULL;
     self->_copy_function = NULL;
     *out_self = self;
@@ -256,6 +258,70 @@ generic_hash_table_get_capacity(generic_hash_table self, size_t* out_capacity)
     }
 
     *out_capacity = self->_n_buckets;
+
+    return 0;
+}
+
+int
+generic_hash_table_get_size(generic_hash_table self, size_t* out_size)
+{
+
+    if (!self)
+    {
+        // @todo add logs.
+        return 1;
+    }
+
+    if (!out_size)
+    {
+        // @todo add logs.
+        return 1;
+    }
+
+    *out_size = self->_size;
+
+    return 0;
+}
+
+int
+generic_hash_table_is_empty(generic_hash_table self)
+{
+
+    if (!self)
+    {
+        // @todo add logs.
+        return -1;
+    }
+
+    return self->_size == 0;
+}
+
+int
+generic_hash_table_insert(generic_hash_table self, void* key, void* value)
+{
+
+    if (!self)
+    {
+        // @todo logs.
+        return 1;
+    }
+
+    if (!key)
+    {
+        // @todo logs.
+        return 1;
+    }
+
+    // @note value can be NULL? Yes, for the moment but I do not see any problem
+    // with it.
+
+    size_t hashed_key = self->_hash_function(key);
+    size_t bucket_index = hashed_key % self->_n_buckets;
+    generic_linked_list_insert_first(
+        *(self->_buckets + bucket_index),
+        value);  // @note insert the last item to the head of the list to follow
+                 // the temporal paradigm, maybe something better could be done.
+    self->_size++;
 
     return 0;
 }
