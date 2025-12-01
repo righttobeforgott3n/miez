@@ -23,6 +23,107 @@ struct generic_hash_table_t
     int (*_compare_key_function)(void*, void*);
 };
 
+struct _key_value_t
+{
+
+    void* _key;
+    void (*_free_key_function)(void*);
+    int (*_copy_key_function)(void*);
+
+    void* _value;
+    void (*_free_value_function)(void*);
+    int (*_copy_value_function)(void*, void**);
+};
+
+void
+_free_key_value_function(void* data)
+{
+
+    if (!data)
+    {
+        return;
+    }
+
+    struct _key_value_t* pair = (struct _key_value_t*) data;
+
+    if (!pair->_free_value_function)
+    {
+        // @todo log.
+        return;
+    }
+
+    if (!pair->_free_key_function)
+    {
+        // @todo log.
+        return;
+    }
+
+    pair->_free_value_function(pair->_value);
+    pair->_free_key_function(pair->_key);
+    free(pair);
+}
+
+int
+_copy_key_value_function(void* data, void** out_data)
+{
+
+    if (!data)
+    {
+        // @todo log.
+        return 1;
+    }
+
+    if (!out_data)
+    {
+        // @todo log.
+        return 1;
+    }
+
+    struct _key_value_t* pair = (struct _key_value_t*) data;
+
+    if (!pair->_free_key_function)
+    {
+        // @todo log.
+        return 1;
+    }
+
+    if (!pair->_copy_key_function)
+    {
+        // @todo log.
+        return 1;
+    }
+
+    if (!pair->_free_value_function)
+    {
+        // @todo log.
+        return 1;
+    }
+
+    if (!pair->_copy_value_function)
+    {
+        // @todo log.
+        return 1;
+    }
+
+    struct _key_value_t* self_pair =
+        (struct _key_value_t*) malloc(sizeof(struct _key_value_t));
+    if (!self_pair)
+    {
+        // @todo log.
+        return -1;
+    }
+
+    self_pair->_free_key_function = pair->_free_key_function;
+    self_pair->_copy_key_function = pair->_copy_key_function;
+    self_pair->_free_value_function = pair->_free_value_function;
+    self_pair->_copy_value_function = pair->_copy_value_function;
+    // @todo copy the key and save to self_pair.
+    // @todo copy the value and save to self_pair.
+    // @todo copy self_pair to *out_data casting it to void**.
+
+    return 0;
+}
+
 // @todo define here two wrapper function and a key-value structure to pass them
 // to the generic_linked_list instances.
 
