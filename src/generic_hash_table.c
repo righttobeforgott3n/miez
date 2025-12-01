@@ -82,6 +82,12 @@ generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
         return 1;
     }
 
+    if (!hash_function)
+    {
+        // @todo log.
+        return 1;
+    }
+
     struct generic_hash_table_t* self = (struct generic_hash_table_t*) malloc(
         sizeof(struct generic_hash_table_t));
     if (!self)
@@ -256,7 +262,8 @@ generic_hash_table_get_free_key_function(generic_hash_table self,
 
 int
 generic_hash_table_get_copy_key_function(generic_hash_table self,
-                                         int (**out_copy_key_function)(void*, void**))
+                                         int (**out_copy_key_function)(void*,
+                                                                       void**))
 {
 
     if (!self)
@@ -548,7 +555,8 @@ generic_hash_table_delete(generic_hash_table self, void* key)
         if (self->_compare_key_function(key, pair->_key) == 0)
         {
 
-            exit_code = generic_linked_list_iterator_remove(begin, NULL);
+            exit_code =
+                generic_linked_list_iterator_remove(begin, (void**) &pair);
             if (exit_code)
             {
 
