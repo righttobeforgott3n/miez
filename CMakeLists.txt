@@ -32,7 +32,7 @@ if(ENABLE_TESTS)
     enable_testing()
 
     file(GLOB_RECURSE TEST_SOURCES
-        "${CMAKE_CURRENT_SOURCE_DIR}/test/*_test.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/*_test.c"
     )
 
     file(GLOB_RECURSE LIB_SOURCES
@@ -54,7 +54,7 @@ if(ENABLE_TESTS)
         target_link_libraries(${test_name} PRIVATE Threads::Threads)
         add_test(NAME ${test_name} COMMAND ${test_name})
         set_target_properties(${test_name} PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/test"
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
         )
     endforeach()
 
