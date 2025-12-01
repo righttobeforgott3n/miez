@@ -5,29 +5,43 @@
 
 typedef struct generic_hash_table_t* generic_hash_table;
 
+// @todo Temporary I have decided to avoid a ownership model configurable hash
+// table for simplicity, in future I will improve the structure.
 int
-generic_hash_table_new(size_t (*hash_function)(void*),
-                       int (*compare_function)(void*, void*), size_t capacity,
+generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
+                       void (*free_value_function)(void*),
+                       int (*copy_value_function)(void*, void**),
+                       void (*free_key_function)(void*),
+                       int (*copy_key_function)(void*),
+                       int (*compare_key_function)(void*, void*),
                        generic_hash_table* out_self);
 
 int
 generic_hash_table_free(generic_hash_table self);
 
 int
-generic_hash_table_set_free_function(generic_hash_table self,
-                                     void (*free_function)(void*));
+generic_hash_table_get_hash_function(generic_hash_table self,
+                                     size_t (**out_hash_function)(void*));
 
 int
-generic_hash_table_get_free_function(generic_hash_table self,
-                                     void (**out_free_function)(void*));
+generic_hash_table_get_free_value_function(
+    generic_hash_table self, void (**out_free_value_function)(void*));
 
 int
-generic_hash_table_set_copy_function(generic_hash_table self,
-                                     int (*copy_function)(void*, void**));
+generic_hash_table_get_copy_value_function(
+    generic_hash_table self, int (**out_copy_value_function)(void*, void**));
 
 int
-generic_hash_table_get_copy_function(generic_hash_table self,
-                                     int (**out_copy_function)(void*, void**));
+generic_hash_table_get_free_key_function(generic_hash_table self,
+                                         void (**out_free_key_function)(void*));
+
+int
+generic_hash_table_get_copy_key_function(generic_hash_table self,
+                                         int (**out_copy_key_function)(void*));
+
+int
+generic_hash_table_get_compare_key_function(
+    generic_hash_table self, int (**out_compare_key_function)(void*, void*));
 
 int
 generic_hash_table_get_capacity(generic_hash_table self, size_t* out_capacity);
