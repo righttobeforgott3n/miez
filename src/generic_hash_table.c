@@ -23,6 +23,9 @@ struct generic_hash_table_t
     int (*_compare_key_function)(void*, void*);
 };
 
+// @todo define here two wrapper function and a key-value structure to pass them
+// to the generic_linked_list instances.
+
 int
 generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
                        void (*free_value_function)(void*),
@@ -83,8 +86,12 @@ generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
         return -1;
     }
 
-    int exit_code = 0;
-
+    self->_hash_function = hash_function;
+    self->_compare_key_function = compare_key_function;
+    self->_free_value_function = free_value_function;
+    self->_copy_value_function = copy_value_function;
+    self->_free_key_function = free_key_function;
+    self->_copy_key_function = copy_key_function;
     self->_capacity = capacity;
     self->_size = 0;
     self->_buckets =
@@ -97,9 +104,21 @@ generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
     while (i < capacity)
     {
 
-        exit_code = generic_linked_list_new(self->_buckets + i);
-        if (exit_code)
+        int exit_code_0 = 0, exit_code_1 = 0, exit_code_2 = 0;
+
+        exit_code_0 = generic_linked_list_new(self->_buckets + i);
+        exit_code_1 = generic_linked_list_set_copy_function(
+            *(self->_buckets + i),
+            NULL);  // @todo here the key-value copy function must be set: the
+                    // function must be specifically crafted within this module
+                    // with a function which call both the two copy functions.
+        exit_code_2 = generic_linked_list_set_free_function(
+            *(self->_buckets + i), NULL);  // @todo same as the copy function.
+
+        if (exit_code_0 || exit_code_1 || exit_code_2)
         {
+
+            // @todo log.
 
             for (size_t j = 0; j < i; j++)
             {
@@ -109,21 +128,15 @@ generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
             free(self->_buckets);
             free(self);
 
-            return exit_code;
+            return 1;
         }
 
         i++;
     }
-    self->_hash_function = hash_function;
-    self->_compare_key_function = compare_key_function;
-    self->_free_value_function = free_value_function;
-    self->_copy_value_function = copy_value_function;
-    self->_free_key_function = free_key_function;
-    self->_copy_key_function = copy_key_function;
 
     *out_self = self;
 
-    return exit_code;
+    return 0;
 }
 
 int
@@ -162,7 +175,7 @@ generic_hash_table_get_hash_function(generic_hash_table self,
 {
 
     if (!self)
-    {  
+    {
         // @todo add logs.
         return 1;
     }
