@@ -415,6 +415,7 @@ generic_hash_table_insert(generic_hash_table self, void* key, void* value)
     return 0;
 }
 
+// @todo implement the check on exit_code over the iterator calls.
 // @todo improve it by buffering the iterator?
 int
 generic_hash_table_get(generic_hash_table self, void* key, void** out_value)
@@ -491,6 +492,8 @@ generic_hash_table_get(generic_hash_table self, void* key, void** out_value)
     return 1;
 }
 
+// @todo improve it by buffering the iterator?
+// @todo implement the check on exit_code over the iterator calls.
 int
 generic_hash_table_delete(generic_hash_table self, void* key)
 {
@@ -576,6 +579,73 @@ generic_hash_table_delete(generic_hash_table self, void* key)
 
     return 1;
 }
+
+// @todo improve it by buffering the iterator?
+// @todo implement the check on exit_code over the iterator calls.
+int
+generic_hash_table_contains(generic_hash_table self, void* key)
+{
+
+    if (!self)
+    {
+        // @todo log
+        return 1;
+    }
+
+    if (!key)
+    {
+        // @todo log
+        return 1;
+    }
+
+    size_t hashed_key = self->_hash_function(key);
+    size_t bucket_index = hashed_key % self->_capacity;
+
+    generic_linked_list_iterator begin = NULL;
+    int exit_code = generic_linked_list_iterator_begin(
+        *(self->_buckets + bucket_index), &begin);
+    if (exit_code)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - failed to create begin iterator\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return exit_code;
+    }
+
+    while (generic_linked_list_iterator_is_valid(begin) == 0)
+    {
+
+        struct _key_value_t* pair = NULL;
+        exit_code = generic_linked_list_iterator_get(begin, (void**) &pair);
+        if (exit_code)
+        {
+
+#ifdef STDIO_DEBUG
+            fprintf(stderr, "%s - failed to get iterator value\n",
+                    __PRETTY_FUNCTION__);
+#endif
+
+            generic_linked_list_iterator_free(begin);
+
+            return exit_code;
+        }
+
+        if (self->_compare_key_function(key, pair->_key) == 0)
+        {
+            generic_linked_list_iterator_free(begin);
+            return 0;
+        }
+
+        generic_linked_list_iterator_next(begin);
+    }
+    generic_linked_list_iterator_free(begin);
+
+    return 1;
+}
+
 // @todo temporary for the free, set_free_function etc I have decided to warning
 // the first error but to continue with the operation; this decision can be
 // reverted or modified in future.
