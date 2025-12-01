@@ -5,7 +5,7 @@
 
 typedef struct generic_hash_table_t* generic_hash_table;
 
-// @todo Temporary I have decided to avoid a ownership model configurable hash
+// @note Temporary I have decided to avoid a ownership model configurable hash
 // table for simplicity, in future I will improve the structure.
 int
 generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
