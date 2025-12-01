@@ -156,9 +156,59 @@ generic_hash_table_free(generic_hash_table self)
     while (i < self->_capacity)
     {
 
-        // @todo apply a for-each with the self->_free_key_value_function.
+        generic_linked_list_iterator begin = NULL;
+        int exit_code =
+            generic_linked_list_iterator_begin(*(self->_buckets + i), &begin);
+        if (exit_code)
+        {
 
-        int exit_code = generic_linked_list_free(*(self->_buckets + i));
+#ifdef STDIO_DEBUG
+            fprintf(stderr,
+                    "%s - failed to create begin iterator for bucket %zu\n",
+                    __PRETTY_FUNCTION__, i);
+#endif
+
+            if (!first_error)
+            {
+                first_error = exit_code;
+            }
+        }
+        else
+        {
+
+            while (generic_linked_list_iterator_is_valid(begin) == 0)
+            {
+
+                struct _key_value_t* pair = NULL;
+                exit_code =
+                    generic_linked_list_iterator_get(begin, (void**) &pair);
+                if (exit_code)
+                {
+
+#ifdef STDIO_DEBUG
+                    fprintf(stderr, "%s - failed to get iterator value\n",
+                            __PRETTY_FUNCTION__);
+#endif
+                    if (!first_error)
+                    {
+                        first_error = exit_code;
+                    }
+                    
+                    generic_linked_list_iterator_next(begin);
+                    continue;
+                }
+
+                self->_free_key_function(pair->_key);
+                self->_free_value_function(pair->_value);
+                free(pair);
+
+                generic_linked_list_iterator_next(begin);
+            }
+
+            generic_linked_list_iterator_free(begin);
+        }
+
+        exit_code = generic_linked_list_free(*(self->_buckets + i));
         if (exit_code && !first_error)
         {
             first_error = exit_code;
