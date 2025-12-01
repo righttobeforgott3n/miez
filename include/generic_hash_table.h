@@ -37,7 +37,8 @@ generic_hash_table_get_free_key_function(generic_hash_table self,
 
 int
 generic_hash_table_get_copy_key_function(generic_hash_table self,
-                                         int (**out_copy_key_function)(void*));
+                                         int (**out_copy_key_function)(void*,
+                                                                       void**));
 
 int
 generic_hash_table_get_compare_key_function(
