@@ -65,9 +65,11 @@ generic_hash_table_get(generic_hash_table self, void* key, void** out_value);
 int
 generic_hash_table_contains(generic_hash_table self, void* key);
 
+// @todo implement.
 int
 generic_hash_table_clear(generic_hash_table self);
 
+// @todo implement.
 int
 generic_hash_table_for_each(generic_hash_table self,
                             void (*apply)(void*, void*));
