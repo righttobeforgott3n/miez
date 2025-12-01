@@ -19,7 +19,7 @@ struct generic_hash_table_t
     int (*_copy_value_function)(void*, void**);
 
     void (*_free_key_function)(void*);
-    int (*_copy_key_function)(void*);
+    int (*_copy_key_function)(void*, void**);
     int (*_compare_key_function)(void*, void*);
 };
 
@@ -27,112 +27,15 @@ struct _key_value_t
 {
 
     void* _key;
-    void (*_free_key_function)(void*);
-    int (*_copy_key_function)(void*);
-
     void* _value;
-    void (*_free_value_function)(void*);
-    int (*_copy_value_function)(void*, void**);
 };
-
-void
-_free_key_value_function(void* data)
-{
-
-    if (!data)
-    {
-        return;
-    }
-
-    struct _key_value_t* pair = (struct _key_value_t*) data;
-
-    if (!pair->_free_value_function)
-    {
-        // @todo log.
-        return;
-    }
-
-    if (!pair->_free_key_function)
-    {
-        // @todo log.
-        return;
-    }
-
-    pair->_free_value_function(pair->_value);
-    pair->_free_key_function(pair->_key);
-    free(pair);
-}
-
-int
-_copy_key_value_function(void* data, void** out_data)
-{
-
-    if (!data)
-    {
-        // @todo log.
-        return 1;
-    }
-
-    if (!out_data)
-    {
-        // @todo log.
-        return 1;
-    }
-
-    struct _key_value_t* pair = (struct _key_value_t*) data;
-
-    if (!pair->_free_key_function)
-    {
-        // @todo log.
-        return 1;
-    }
-
-    if (!pair->_copy_key_function)
-    {
-        // @todo log.
-        return 1;
-    }
-
-    if (!pair->_free_value_function)
-    {
-        // @todo log.
-        return 1;
-    }
-
-    if (!pair->_copy_value_function)
-    {
-        // @todo log.
-        return 1;
-    }
-
-    struct _key_value_t* self_pair =
-        (struct _key_value_t*) malloc(sizeof(struct _key_value_t));
-    if (!self_pair)
-    {
-        // @todo log.
-        return -1;
-    }
-
-    self_pair->_free_key_function = pair->_free_key_function;
-    self_pair->_copy_key_function = pair->_copy_key_function;
-    self_pair->_free_value_function = pair->_free_value_function;
-    self_pair->_copy_value_function = pair->_copy_value_function;
-    // @todo copy the key and save to self_pair.
-    // @todo copy the value and save to self_pair.
-    // @todo copy self_pair to *out_data casting it to void**.
-
-    return 0;
-}
-
-// @todo define here two wrapper function and a key-value structure to pass them
-// to the generic_linked_list instances.
 
 int
 generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
                        void (*free_value_function)(void*),
                        int (*copy_value_function)(void*, void**),
                        void (*free_key_function)(void*),
-                       int (*copy_key_function)(void*),
+                       int (*copy_key_function)(void*, void**),
                        int (*compare_key_function)(void*, void*),
                        generic_hash_table* out_self)
 {
@@ -205,21 +108,12 @@ generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
     while (i < capacity)
     {
 
-        int exit_code_0 = 0, exit_code_1 = 0, exit_code_2 = 0;
-
-        exit_code_0 = generic_linked_list_new(self->_buckets + i);
-        exit_code_1 = generic_linked_list_set_copy_function(
-            *(self->_buckets + i),
-            NULL);  // @todo here the key-value copy function must be set: the
-                    // function must be specifically crafted within this module
-                    // with a function which call both the two copy functions.
-        exit_code_2 = generic_linked_list_set_free_function(
-            *(self->_buckets + i), NULL);  // @todo same as the copy function.
-
-        if (exit_code_0 || exit_code_1 || exit_code_2)
+        int exit_code = generic_linked_list_new(
+            self->_buckets
+            + i);  // @note no ownership, the single generic_linked_list will
+                   // track only pointers.
+        if (exit_code)
         {
-
-            // @todo log.
 
             for (size_t j = 0; j < i; j++)
             {
@@ -255,6 +149,8 @@ generic_hash_table_free(generic_hash_table self)
     size_t i = 0;
     while (i < self->_capacity)
     {
+
+        // @todo apply a for-each with the self->_free_key_value_function.
 
         int exit_code = generic_linked_list_free(*(self->_buckets + i));
         if (exit_code && !first_error)
@@ -479,15 +375,47 @@ generic_hash_table_insert(generic_hash_table self, void* key, void* value)
 
     size_t hashed_key = self->_hash_function(key);
     size_t bucket_index = hashed_key % self->_capacity;
+
+    struct _key_value_t* pair =
+        (struct _key_value_t*) malloc(sizeof(struct _key_value_t));
+    if (!pair)
+    {
+        // @todo log.
+        return -1;
+    }
+
+    int exit_code = self->_copy_key_function(key, &(pair->_key));  // @todo
+    if (exit_code)
+    {
+
+        // @todo log
+        free(pair);
+
+        return exit_code;
+    }
+
+    exit_code = self->_copy_value_function(value, &(pair->_value));
+    if (exit_code)
+    {
+
+        // @todo log
+
+        self->_free_key_function(pair->_key);
+        free(pair);
+
+        return exit_code;
+    }
+
     generic_linked_list_insert_first(
         *(self->_buckets + bucket_index),
-        value);  // @note insert the last item to the head of the list to follow
-                 // the temporal paradigm, maybe something better could be done.
+        pair);  // @note insert the last item to the head of the list to follow
+                // the temporal paradigm, maybe something better could be done.
     self->_size++;
 
     return 0;
 }
 
+// @todo improve it by buffering the iterator?
 int
 generic_hash_table_get(generic_hash_table self, void* key, void** out_value)
 {
@@ -510,15 +438,144 @@ generic_hash_table_get(generic_hash_table self, void* key, void** out_value)
         return 1;
     }
 
-    // @todo hash the key.
-    // @todo modulo capacity to get the bucket index.
-    // @todo improve it by buffering the iterator?
-    // @todo allocate the bucket's iterator from begin.
-    // @todo call the find on it.
+    size_t hashed_key = self->_hash_function(key);
+    size_t bucket_index = hashed_key % self->_capacity;
 
-    return 0;
+    generic_linked_list_iterator begin = NULL;
+    int exit_code = generic_linked_list_iterator_begin(
+        *(self->_buckets + bucket_index), &begin);
+    if (exit_code)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - failed to create begin iterator\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return exit_code;
+    }
+
+    while (generic_linked_list_iterator_is_valid(begin) == 0)
+    {
+
+        struct _key_value_t* pair = NULL;
+        exit_code = generic_linked_list_iterator_get(begin, (void**) &pair);
+        if (exit_code)
+        {
+
+#ifdef STDIO_DEBUG
+            fprintf(stderr, "%s - failed to get iterator value\n",
+                    __PRETTY_FUNCTION__);
+#endif
+
+            generic_linked_list_iterator_free(begin);
+
+            return exit_code;
+        }
+
+        if (self->_compare_key_function(key, pair->_key) == 0)
+        {
+
+            *out_value = pair->_value;
+            generic_linked_list_iterator_free(begin);
+
+            return 0;
+        }
+
+        generic_linked_list_iterator_next(begin);
+    }
+    generic_linked_list_iterator_free(begin);
+
+    *out_value = NULL;
+
+    return 1;
 }
 
+int
+generic_hash_table_delete(generic_hash_table self, void* key)
+{
+
+    if (!self)
+    {
+        // @todo log
+        return 1;
+    }
+
+    if (!key)
+    {
+        // @todo log
+        return 1;
+    }
+
+    size_t hashed_key = self->_hash_function(key);
+    size_t bucket_index = hashed_key % self->_capacity;
+
+    generic_linked_list_iterator begin = NULL;
+    int exit_code = generic_linked_list_iterator_begin(
+        *(self->_buckets + bucket_index), &begin);
+    if (exit_code)
+    {
+
+#ifdef STDIO_DEBUG
+        fprintf(stderr, "%s - failed to create begin iterator\n",
+                __PRETTY_FUNCTION__);
+#endif
+
+        return exit_code;
+    }
+
+    while (generic_linked_list_iterator_is_valid(begin) == 0)
+    {
+
+        struct _key_value_t* pair = NULL;
+        exit_code = generic_linked_list_iterator_get(begin, (void**) &pair);
+        if (exit_code)
+        {
+
+#ifdef STDIO_DEBUG
+            fprintf(stderr, "%s - failed to get iterator value\n",
+                    __PRETTY_FUNCTION__);
+#endif
+
+            generic_linked_list_iterator_free(begin);
+
+            return exit_code;
+        }
+
+        if (self->_compare_key_function(key, pair->_key) == 0)
+        {
+
+            exit_code = generic_linked_list_iterator_remove(begin, NULL);
+            if (exit_code)
+            {
+
+#ifdef STDIO_DEBUG
+                fprintf(stderr, "%s - failed to remove element\n",
+                        __PRETTY_FUNCTION__);
+#endif
+
+                generic_linked_list_iterator_free(begin);
+
+                return exit_code;
+            }
+
+            self->_free_key_function(pair->_key);
+            self->_free_value_function(pair->_value);
+            free(pair);
+
+            self->_size--;
+
+            generic_linked_list_iterator_free(begin);
+
+            return 0;
+        }
+
+        generic_linked_list_iterator_next(begin);
+    }
+    generic_linked_list_iterator_free(begin);
+
+    return 1;
+}
 // @todo temporary for the free, set_free_function etc I have decided to warning
 // the first error but to continue with the operation; this decision can be
 // reverted or modified in future.

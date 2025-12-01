@@ -12,7 +12,7 @@ generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
                        void (*free_value_function)(void*),
                        int (*copy_value_function)(void*, void**),
                        void (*free_key_function)(void*),
-                       int (*copy_key_function)(void*),
+                       int (*copy_key_function)(void*, void**),
                        int (*compare_key_function)(void*, void*),
                        generic_hash_table* out_self);
 
@@ -56,13 +56,13 @@ int
 generic_hash_table_insert(generic_hash_table self, void* key, void* value);
 
 int
+generic_hash_table_delete(generic_hash_table self, void* key);
+
+int
 generic_hash_table_get(generic_hash_table self, void* key, void** out_value);
 
 int
 generic_hash_table_contains(generic_hash_table self, void* key);
-
-int
-generic_hash_table_delete(generic_hash_table self, void* key);
 
 int
 generic_hash_table_clear(generic_hash_table self);
