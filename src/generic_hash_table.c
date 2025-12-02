@@ -1,5 +1,7 @@
 #include "generic_hash_table.h"
 #include "generic_linked_list.h"
+#include <pthread.h>  // @todo it'll be moved into a separate *_posix.c source.
+#include <stdatomic.h>
 #include <stdlib.h>
 
 #ifdef STDIO_DEBUG
@@ -10,8 +12,9 @@ struct generic_hash_table_t
 {
 
     size_t _capacity;
-    size_t _size;
+    atomic_size_t _size;
     generic_linked_list* _buckets;
+    pthread_mutex_t* _mutexes;
 
     size_t (*_hash_function)(void*);
 
@@ -103,33 +106,65 @@ generic_hash_table_new(size_t capacity, size_t (*hash_function)(void*),
     self->_free_key_function = free_key_function;
     self->_copy_key_function = copy_key_function;
     self->_capacity = capacity;
-    self->_size = 0;
+    atomic_init(&self->_size, 0);
     self->_buckets =
         (generic_linked_list*) malloc(sizeof(generic_linked_list) * capacity);
     if (!self->_buckets)
     {
+        // @todo log.
         return -1;
     }
+    self->_mutexes =
+        (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t) * capacity);
+    if (!self->_mutexes)
+    {
+        // @todo log.
+        return -1;
+    }
+
     size_t i = 0;
     while (i < capacity)
     {
 
-        int exit_code = generic_linked_list_new(
-            self->_buckets
-            + i);  // @note no ownership, the single generic_linked_list will
-                   // track only pointers.
+        int exit_code = generic_linked_list_new(self->_buckets + i);
         if (exit_code)
         {
 
-            for (size_t j = 0; j < i; j++)
+            size_t j = 0;
+            while (j < i)
             {
+
                 generic_linked_list_free(*(self->_buckets + j));
+                pthread_mutex_destroy(self->_mutexes + j);
+
+                j++;
             }
 
+            free(self->_mutexes);
             free(self->_buckets);
             free(self);
 
-            return 1;
+            return -1;
+        }
+
+        if (pthread_mutex_init(self->_mutexes + i, NULL) != 0)
+        {
+
+            generic_linked_list_free(*(self->_buckets + i));
+            size_t j = 0;
+            while (j < i)
+            {
+
+                generic_linked_list_free(*(self->_buckets + j));
+                pthread_mutex_destroy(self->_mutexes + j);
+                j++;
+            }
+
+            free(self->_mutexes);
+            free(self->_buckets);
+            free(self);
+
+            return -1;
         }
 
         i++;
@@ -155,6 +190,8 @@ generic_hash_table_free(generic_hash_table self)
     size_t i = 0;
     while (i < self->_capacity)
     {
+
+        pthread_mutex_lock(self->_mutexes + i);
 
         generic_linked_list_iterator begin = NULL;
         int exit_code =
@@ -193,7 +230,7 @@ generic_hash_table_free(generic_hash_table self)
                     {
                         first_error = exit_code;
                     }
-                    
+
                     generic_linked_list_iterator_next(begin);
                     continue;
                 }
@@ -214,9 +251,13 @@ generic_hash_table_free(generic_hash_table self)
             first_error = exit_code;
         }
 
+        pthread_mutex_unlock(self->_mutexes + i);
+        pthread_mutex_destroy(self->_mutexes + i);
+
         i++;
     }
     free(self->_buckets);
+    free(self->_mutexes);
     free(self);
 
     return first_error;
@@ -392,7 +433,7 @@ generic_hash_table_get_size(generic_hash_table self, size_t* out_size)
         return 1;
     }
 
-    *out_size = self->_size;
+    *out_size = atomic_load(&self->_size);
 
     return 0;
 }
@@ -407,10 +448,9 @@ generic_hash_table_is_empty(generic_hash_table self)
         return -1;
     }
 
-    return self->_size == 0;
+    return atomic_load(&self->_size) == 0 ? 1 : 0;
 }
 
-// @todo I need to insert the key-value pair, not only the value.
 int
 generic_hash_table_insert(generic_hash_table self, void* key, void* value)
 {
@@ -441,7 +481,7 @@ generic_hash_table_insert(generic_hash_table self, void* key, void* value)
         return -1;
     }
 
-    int exit_code = self->_copy_key_function(key, &(pair->_key));  // @todo
+    int exit_code = self->_copy_key_function(key, &(pair->_key));
     if (exit_code)
     {
 
@@ -463,11 +503,26 @@ generic_hash_table_insert(generic_hash_table self, void* key, void* value)
         return exit_code;
     }
 
-    generic_linked_list_insert_first(
+    pthread_mutex_lock(self->_mutexes + bucket_index);
+
+    exit_code = generic_linked_list_insert_first(
         *(self->_buckets + bucket_index),
         pair);  // @note insert the last item to the head of the list to follow
                 // the temporal paradigm, maybe something better could be done.
-    self->_size++;
+    if (exit_code)
+    {
+
+        // @todo log
+
+        self->_free_value_function(pair->_value);
+        self->_free_key_function(pair->_key);
+        free(pair);
+
+        return exit_code;
+    }
+    atomic_fetch_add(&self->_size, 1);
+
+    pthread_mutex_unlock(self->_mutexes + bucket_index);
 
     return 0;
 }
@@ -480,24 +535,26 @@ generic_hash_table_get(generic_hash_table self, void* key, void** out_value)
 
     if (!self)
     {
-        // @todo logs.
+        // @todo log
         return 1;
     }
 
     if (!key)
     {
-        // @todo logs.
+        // @todo log
         return 1;
     }
 
     if (!out_value)
     {
-        // @todo logs.
+        // @todo log
         return 1;
     }
 
     size_t hashed_key = self->_hash_function(key);
     size_t bucket_index = hashed_key % self->_capacity;
+
+    pthread_mutex_lock(self->_mutexes + bucket_index);
 
     generic_linked_list_iterator begin = NULL;
     int exit_code = generic_linked_list_iterator_begin(
@@ -505,11 +562,9 @@ generic_hash_table_get(generic_hash_table self, void* key, void** out_value)
     if (exit_code)
     {
 
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - failed to create begin iterator\n",
-                __PRETTY_FUNCTION__);
-#endif
+        // @todo log
 
+        pthread_mutex_unlock(self->_mutexes + bucket_index);
         return exit_code;
     }
 
@@ -521,22 +576,24 @@ generic_hash_table_get(generic_hash_table self, void* key, void** out_value)
         if (exit_code)
         {
 
-#ifdef STDIO_DEBUG
-            fprintf(stderr, "%s - failed to get iterator value\n",
-                    __PRETTY_FUNCTION__);
-#endif
+            // @todo log
 
             generic_linked_list_iterator_free(begin);
 
+            pthread_mutex_unlock(self->_mutexes + bucket_index);
             return exit_code;
         }
 
         if (self->_compare_key_function(key, pair->_key) == 0)
         {
 
+            // @todo log
+
             *out_value = pair->_value;
+
             generic_linked_list_iterator_free(begin);
 
+            pthread_mutex_unlock(self->_mutexes + bucket_index);
             return 0;
         }
 
@@ -546,11 +603,10 @@ generic_hash_table_get(generic_hash_table self, void* key, void** out_value)
 
     *out_value = NULL;
 
+    pthread_mutex_unlock(self->_mutexes + bucket_index);
     return 1;
 }
 
-// @todo improve it by buffering the iterator?
-// @todo implement the check on exit_code over the iterator calls.
 int
 generic_hash_table_delete(generic_hash_table self, void* key)
 {
@@ -570,17 +626,17 @@ generic_hash_table_delete(generic_hash_table self, void* key)
     size_t hashed_key = self->_hash_function(key);
     size_t bucket_index = hashed_key % self->_capacity;
 
+    pthread_mutex_lock(self->_mutexes + bucket_index);
+
     generic_linked_list_iterator begin = NULL;
     int exit_code = generic_linked_list_iterator_begin(
         *(self->_buckets + bucket_index), &begin);
     if (exit_code)
     {
 
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - failed to create begin iterator\n",
-                __PRETTY_FUNCTION__);
-#endif
+        // @todo log
 
+        pthread_mutex_unlock(self->_mutexes + bucket_index);
         return exit_code;
     }
 
@@ -592,13 +648,11 @@ generic_hash_table_delete(generic_hash_table self, void* key)
         if (exit_code)
         {
 
-#ifdef STDIO_DEBUG
-            fprintf(stderr, "%s - failed to get iterator value\n",
-                    __PRETTY_FUNCTION__);
-#endif
+            // @todo log
 
             generic_linked_list_iterator_free(begin);
 
+            pthread_mutex_unlock(self->_mutexes + bucket_index);
             return exit_code;
         }
 
@@ -610,13 +664,11 @@ generic_hash_table_delete(generic_hash_table self, void* key)
             if (exit_code)
             {
 
-#ifdef STDIO_DEBUG
-                fprintf(stderr, "%s - failed to remove element\n",
-                        __PRETTY_FUNCTION__);
-#endif
+                // @todo log
 
                 generic_linked_list_iterator_free(begin);
 
+                pthread_mutex_unlock(self->_mutexes + bucket_index);
                 return exit_code;
             }
 
@@ -624,10 +676,11 @@ generic_hash_table_delete(generic_hash_table self, void* key)
             self->_free_value_function(pair->_value);
             free(pair);
 
-            self->_size--;
+            atomic_fetch_sub(&self->_size, 1);
 
             generic_linked_list_iterator_free(begin);
 
+            pthread_mutex_unlock(self->_mutexes + bucket_index);
             return 0;
         }
 
@@ -635,11 +688,10 @@ generic_hash_table_delete(generic_hash_table self, void* key)
     }
     generic_linked_list_iterator_free(begin);
 
+    pthread_mutex_unlock(self->_mutexes + bucket_index);
     return 1;
 }
 
-// @todo improve it by buffering the iterator?
-// @todo implement the check on exit_code over the iterator calls.
 int
 generic_hash_table_contains(generic_hash_table self, void* key)
 {
@@ -659,17 +711,17 @@ generic_hash_table_contains(generic_hash_table self, void* key)
     size_t hashed_key = self->_hash_function(key);
     size_t bucket_index = hashed_key % self->_capacity;
 
+    pthread_mutex_lock(self->_mutexes + bucket_index);
+
     generic_linked_list_iterator begin = NULL;
     int exit_code = generic_linked_list_iterator_begin(
         *(self->_buckets + bucket_index), &begin);
     if (exit_code)
     {
 
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - failed to create begin iterator\n",
-                __PRETTY_FUNCTION__);
-#endif
+        // @todo log
 
+        pthread_mutex_unlock(self->_mutexes + bucket_index);
         return exit_code;
     }
 
@@ -681,19 +733,22 @@ generic_hash_table_contains(generic_hash_table self, void* key)
         if (exit_code)
         {
 
-#ifdef STDIO_DEBUG
-            fprintf(stderr, "%s - failed to get iterator value\n",
-                    __PRETTY_FUNCTION__);
-#endif
+            // @todo log
 
             generic_linked_list_iterator_free(begin);
 
+            pthread_mutex_unlock(self->_mutexes + bucket_index);
             return exit_code;
         }
 
         if (self->_compare_key_function(key, pair->_key) == 0)
         {
+
+            // @todo log
+
             generic_linked_list_iterator_free(begin);
+
+            pthread_mutex_unlock(self->_mutexes + bucket_index);
             return 0;
         }
 
@@ -701,6 +756,7 @@ generic_hash_table_contains(generic_hash_table self, void* key)
     }
     generic_linked_list_iterator_free(begin);
 
+    pthread_mutex_unlock(self->_mutexes + bucket_index);
     return 1;
 }
 
