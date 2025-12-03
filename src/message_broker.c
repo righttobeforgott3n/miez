@@ -1,5 +1,7 @@
 #include "message_broker.h"
 #include "generic_hash_table.h"
+#include "generic_linked_list.h"
+#include "generic_queue_syn.h"
 #include "thread_pool.h"
 #include <pthread.h>
 #include <stdio.h>
@@ -20,11 +22,16 @@ struct message_t
     char* _content;
 };
 
+struct subscriber_proxy_t
+{
+    // @todo queue syn of messages.
+};
+
 struct channel_t
 {
 
     char* _channel_name;
-    // @todo subscriber_proxy _subscriber_proxy;
+    generic_linked_list _subscriber_proxies;
     pthread_mutex_t* _mutex;
 };
 
@@ -167,7 +174,8 @@ _channel_value_copy(void* src, void** dst)
 struct _publisher_task_arg_t
 {
 
-    struct message_t* _m;
+    char* _channel_name;
+    char* _message;
     generic_hash_table _channel_table;
 };
 
@@ -184,10 +192,11 @@ _publisher_task(void* arg)
     struct _publisher_task_arg_t* publisher_arg =
         (struct _publisher_task_arg_t*) arg;
 
+    // @todo here: channel_name and message could be copied in way to avoid
+    // the free call after.
     printf("[message_broker] channel: %s, message: %s\n",
-           publisher_arg->_m->_channel_name, publisher_arg->_m->_content);
+           publisher_arg->_channel_name, publisher_arg->_message);
 
-    message_free(publisher_arg->_m);
     free(publisher_arg);  // @todo if the publisher arg structure starts to grow
                           // in complexity then implement a free helper.
 
@@ -290,33 +299,27 @@ message_broker_publish(struct message_broker_t* self, const char* channel,
         return 1;
     }
 
-    struct message_t* m = NULL;
-    int exit_code = message_new((char*) channel, (char*) message, &m);
-    if (exit_code)
-    {
-        return -1;
-    }
-
     struct _publisher_task_arg_t* publisher_arg =
         (struct _publisher_task_arg_t*) malloc(
             sizeof(struct _publisher_task_arg_t));
     if (!publisher_arg)
     {
-        message_free(m);
         return -1;
     }
 
-    publisher_arg->_m = m;
+    publisher_arg->_channel_name = (char*) channel;
+    publisher_arg->_message = (char*) message;
     publisher_arg->_channel_table = self->_channels;
 
     // @todo it would be useful here to have a thread pool which frees the
     // passed argument in way to speed up the caller thread in case of errors.
-    exit_code = thread_pool_submit(self->_publisher_pool, _publisher_task,
-                                   (void*) publisher_arg);
+    int exit_code = thread_pool_submit(self->_publisher_pool, _publisher_task,
+                                       (void*) publisher_arg);
     if (exit_code)
     {
 
-        message_free(publisher_arg->_m);
+        free(publisher_arg->_channel_name);
+        free(publisher_arg->_message);
         free(publisher_arg);
 
         return exit_code;
