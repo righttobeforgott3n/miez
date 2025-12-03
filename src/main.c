@@ -20,22 +20,11 @@ main(int argc __attribute__((unused)), char** argv __attribute__((unused)))
 
     printf("Publishing messages...\n\n");
 
-    message msg = NULL;
-
-    message_new("orders", "order-123-created", &msg);
-    message_broker_publish(broker, msg);
-
-    message_new("orders", "order-456-updated", &msg);
-    message_broker_publish(broker, msg);
-
-    message_new("payments", "payment-789-received", &msg);
-    message_broker_publish(broker, msg);
-
-    message_new("notifications", "user-abc-logged-in", &msg);
-    message_broker_publish(broker, msg);
-
-    message_new("orders", "order-123-shipped", &msg);
-    message_broker_publish(broker, msg);
+    message_broker_publish(broker, "orders", "order-123-created");
+    message_broker_publish(broker, "orders", "order-456-updated");
+    message_broker_publish(broker, "payments", "payment-789-received");
+    message_broker_publish(broker, "notifications", "user-abc-logged-in");
+    message_broker_publish(broker, "orders", "order-123-shipped");
 
     printf("\nWaiting for all tasks to complete...\n\n");
     message_broker_wait(broker);

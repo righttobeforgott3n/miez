@@ -1,27 +1,39 @@
 #include "message_broker.h"
 #include "generic_hash_table.h"
 #include "thread_pool.h"
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 struct message_broker_t
 {
-    struct thread_pool_t* _thread_pool;
+
+    struct thread_pool_t* _publisher_pool;
     generic_hash_table _channels;
 };
 
 struct message_t
 {
-    char* _channel;
+
+    char* _channel_name;
     char* _content;
 };
 
-int
-message_new(const char* channel, const char* content, message* out_self)
+struct channel_t
 {
 
-    if (!channel)
+    char* _channel_name;
+    // @todo subscriber_proxy _subscriber_proxy;
+    pthread_mutex_t* _mutex;
+};
+
+int
+message_new(char* channel_name, const char* content,
+            struct message_t** out_self)
+{
+
+    if (!channel_name)
     {
         return 1;
     }
@@ -36,29 +48,28 @@ message_new(const char* channel, const char* content, message* out_self)
         return 1;
     }
 
-    struct message_t* self = malloc(sizeof(struct message_t));
+    struct message_t* self =
+        (struct message_t*) malloc(sizeof(struct message_t));
     if (!self)
     {
         return -1;
     }
 
-    size_t channel_len = strlen(channel);
-    self->_channel = malloc(channel_len + 1);
-    if (!self->_channel)
+    size_t channel_len = strlen(channel_name);
+    self->_channel_name = malloc(channel_len + 1);
+    if (!self->_channel_name)
     {
         free(self);
         return -1;
     }
-    memcpy(self->_channel, channel, channel_len + 1);
+    memcpy(self->_channel_name, channel_name, channel_len + 1);
 
     size_t content_len = strlen(content);
     self->_content = malloc(content_len + 1);
     if (!self->_content)
     {
 
-        free(self->_channel);
         free(self);
-
         return -1;
     }
     memcpy(self->_content, content, content_len + 1);
@@ -69,7 +80,7 @@ message_new(const char* channel, const char* content, message* out_self)
 }
 
 int
-message_free(message self)
+message_free(struct message_t* self)
 {
 
     if (!self)
@@ -77,7 +88,7 @@ message_free(message self)
         return 1;
     }
 
-    free(self->_channel);
+    free(self->_channel_name);
     free(self->_content);
     free(self);
 
@@ -153,6 +164,13 @@ _channel_value_copy(void* src, void** dst)
     return 0;
 }
 
+struct _publisher_task_arg_t
+{
+
+    struct message_t* _m;
+    generic_hash_table _channel_table;
+};
+
 // @todo just a test: need to be modified to implement the rest of the business.
 static void*
 _publisher_task(void* arg)
@@ -163,12 +181,15 @@ _publisher_task(void* arg)
         return NULL;
     }
 
-    message msg = (message) arg;
+    struct _publisher_task_arg_t* publisher_arg =
+        (struct _publisher_task_arg_t*) arg;
 
-    printf("[message_broker] channel: %s, message: %s\n", msg->_channel,
-           msg->_content);
+    printf("[message_broker] channel: %s, message: %s\n",
+           publisher_arg->_m->_channel_name, publisher_arg->_m->_content);
 
-    message_free(msg);
+    message_free(publisher_arg->_m);
+    free(publisher_arg);  // @todo if the publisher arg structure starts to grow
+                          // in complexity then implement a free helper.
 
     return NULL;
 }
@@ -209,7 +230,7 @@ message_broker_new(struct message_broker_configuration_t* config,
         return -1;
     }
 
-    int exit_code = thread_pool_new(config->_n_threads, &self->_thread_pool);
+    int exit_code = thread_pool_new(config->_n_threads, &self->_publisher_pool);
     if (exit_code)
     {
         free(self);
@@ -223,7 +244,7 @@ message_broker_new(struct message_broker_configuration_t* config,
     if (exit_code)
     {
 
-        thread_pool_free(self->_thread_pool);
+        thread_pool_free(self->_publisher_pool);
         free(self);
 
         return exit_code;
@@ -243,7 +264,7 @@ message_broker_free(struct message_broker_t* self)
         return 1;
     }
 
-    thread_pool_free(self->_thread_pool);      // @todo check exit code and log
+    thread_pool_free(self->_publisher_pool);   // @todo check exit code and log
     generic_hash_table_free(self->_channels);  // @todo check exit code and log
     free(self);
 
@@ -251,22 +272,53 @@ message_broker_free(struct message_broker_t* self)
 }
 
 int
-message_broker_publish(struct message_broker_t* self, message m)
+message_broker_publish(struct message_broker_t* self, const char* channel,
+                       const char* message)
 {
     if (!self)
     {
         return 1;
     }
 
-    if (!m)
+    if (!channel)
     {
         return 1;
     }
 
-    int exit_code = thread_pool_submit(self->_thread_pool, _publisher_task, m);
+    if (!message)
+    {
+        return 1;
+    }
+
+    struct message_t* m = NULL;
+    int exit_code = message_new((char*) channel, (char*) message, &m);
     if (exit_code)
     {
+        return -1;
+    }
+
+    struct _publisher_task_arg_t* publisher_arg =
+        (struct _publisher_task_arg_t*) malloc(
+            sizeof(struct _publisher_task_arg_t));
+    if (!publisher_arg)
+    {
         message_free(m);
+        return -1;
+    }
+
+    publisher_arg->_m = m;
+    publisher_arg->_channel_table = self->_channels;
+
+    // @todo it would be useful here to have a thread pool which frees the
+    // passed argument in way to speed up the caller thread in case of errors.
+    exit_code = thread_pool_submit(self->_publisher_pool, _publisher_task,
+                                   (void*) publisher_arg);
+    if (exit_code)
+    {
+
+        message_free(publisher_arg->_m);
+        free(publisher_arg);
+
         return exit_code;
     }
 
@@ -282,7 +334,7 @@ message_broker_wait(struct message_broker_t* self)
         return 1;
     }
 
-    return thread_pool_wait(self->_thread_pool);
+    return thread_pool_wait(self->_publisher_pool);
 }
 
 // @todo the entire module is in progress...
