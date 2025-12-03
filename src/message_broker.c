@@ -1,4 +1,5 @@
 #include "message_broker.h"
+#include "generic_hash_table.h"
 #include "thread_pool.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,34 +8,154 @@
 struct message_broker_t
 {
     struct thread_pool_t* _thread_pool;
-    // @todo other attributes are needed.
+    generic_hash_table _channels;
 };
 
-// @todo just a test: need to be modified to implement the rest of the business.
-struct publish_task_arg_t
+struct message_t
 {
     char* _channel;
-    char* _message;
+    char* _content;
 };
 
-// @todo just a test: need to be modified to implement the rest of the business.
-static void
-_publish_task_arg_free(struct publish_task_arg_t* arg)
+int
+message_new(const char* channel, const char* content, message* out_self)
 {
 
-    if (!arg)
+    if (!channel)
     {
-        return;
+        return 1;
     }
 
-    free(arg->_channel);
-    free(arg->_message);
-    free(arg);
+    if (!content)
+    {
+        return 1;
+    }
+
+    if (!out_self)
+    {
+        return 1;
+    }
+
+    struct message_t* self = malloc(sizeof(struct message_t));
+    if (!self)
+    {
+        return -1;
+    }
+
+    size_t channel_len = strlen(channel);
+    self->_channel = malloc(channel_len + 1);
+    if (!self->_channel)
+    {
+        free(self);
+        return -1;
+    }
+    memcpy(self->_channel, channel, channel_len + 1);
+
+    size_t content_len = strlen(content);
+    self->_content = malloc(content_len + 1);
+    if (!self->_content)
+    {
+
+        free(self->_channel);
+        free(self);
+
+        return -1;
+    }
+    memcpy(self->_content, content, content_len + 1);
+
+    *out_self = self;
+
+    return 0;
+}
+
+int
+message_free(message self)
+{
+
+    if (!self)
+    {
+        return 1;
+    }
+
+    free(self->_channel);
+    free(self->_content);
+    free(self);
+
+    return 0;
+}
+
+static size_t
+_string_hash(void* key)
+{
+
+    size_t hash = 5381;
+    unsigned char* p = (unsigned char*) key;
+    while (*p)
+    {
+        hash = ((hash << 5) + hash) + *p++;
+    }
+
+    return hash;
+}
+
+static void
+_string_free(void* data)
+{
+    free(data);
+}
+
+static int
+_string_copy(void* src, void** dst)
+{
+
+    if (!src || !dst)
+    {
+        return 1;
+    }
+
+    size_t len = strlen((char*) src);
+    char* copy = malloc(len + 1);
+    if (!copy)
+    {
+        return -1;
+    }
+
+    memcpy(copy, src, len + 1);
+    *dst = copy;
+
+    return 0;
+}
+
+static int
+_string_compare(void* a, void* b)
+{
+    return strcmp((char*) a, (char*) b);
+}
+
+// @todo placeholder for channel value - will be replaced with proper structure
+static void
+_channel_value_free(void* data)
+{
+    free(data);
+}
+
+static int
+_channel_value_copy(void* src, void** dst)
+{
+
+    if (!src || !dst)
+    {
+        return 1;
+    }
+
+    // @todo placeholder - just copy pointer for now
+    *dst = src;
+    return 0;
 }
 
 // @todo just a test: need to be modified to implement the rest of the business.
 static void*
-_publish_task(void* arg)
+_publisher_task(void* arg)
 {
 
     if (!arg)
@@ -42,12 +163,12 @@ _publish_task(void* arg)
         return NULL;
     }
 
-    struct publish_task_arg_t* task_arg = (struct publish_task_arg_t*) arg;
+    message msg = (message) arg;
 
-    printf("[message_broker] channel: %s, message: %s\n", task_arg->_channel,
-           task_arg->_message);
+    printf("[message_broker] channel: %s, message: %s\n", msg->_channel,
+           msg->_content);
 
-    _publish_task_arg_free(task_arg);
+    message_free(msg);
 
     return NULL;
 }
@@ -75,6 +196,12 @@ message_broker_new(struct message_broker_configuration_t* config,
         return 1;
     }
 
+    if (!config->_channels_capacity)  // @todo upper value check.
+    {
+        // @todo log
+        return 1;
+    }
+
     struct message_broker_t* self =
         (struct message_broker_t*) malloc(sizeof(struct message_broker_t));
     if (!self)
@@ -86,6 +213,19 @@ message_broker_new(struct message_broker_configuration_t* config,
     if (exit_code)
     {
         free(self);
+        return exit_code;
+    }
+
+    exit_code = generic_hash_table_new(config->_channels_capacity, _string_hash,
+                                       _channel_value_free, _channel_value_copy,
+                                       _string_free, _string_copy,
+                                       _string_compare, &self->_channels);
+    if (exit_code)
+    {
+
+        thread_pool_free(self->_thread_pool);
+        free(self);
+
         return exit_code;
     }
 
@@ -103,63 +243,30 @@ message_broker_free(struct message_broker_t* self)
         return 1;
     }
 
-    thread_pool_free(self->_thread_pool);  // @todo check exit code and log
+    thread_pool_free(self->_thread_pool);      // @todo check exit code and log
+    generic_hash_table_free(self->_channels);  // @todo check exit code and log
     free(self);
 
     return 0;
 }
 
 int
-message_broker_publish(struct message_broker_t* self, const char* channel,
-                       const char* message)
+message_broker_publish(struct message_broker_t* self, message m)
 {
-
     if (!self)
     {
         return 1;
     }
 
-    if (!channel)
+    if (!m)
     {
         return 1;
     }
 
-    if (!message)
-    {
-        return 1;
-    }
-
-    struct publish_task_arg_t* task_arg =
-        malloc(sizeof(struct publish_task_arg_t));
-    if (!task_arg)
-    {
-        return -1;
-    }
-
-    size_t channel_len = strlen(channel);
-    task_arg->_channel = malloc(channel_len + 1);
-    if (!task_arg->_channel)
-    {
-        free(task_arg);
-        return -1;
-    }
-    memcpy(task_arg->_channel, channel, channel_len + 1);
-
-    size_t message_len = strlen(message);
-    task_arg->_message = malloc(message_len + 1);
-    if (!task_arg->_message)
-    {
-        free(task_arg->_channel);
-        free(task_arg);
-        return -1;
-    }
-    memcpy(task_arg->_message, message, message_len + 1);
-
-    int exit_code =
-        thread_pool_submit(self->_thread_pool, _publish_task, task_arg);
+    int exit_code = thread_pool_submit(self->_thread_pool, _publisher_task, m);
     if (exit_code)
     {
-        _publish_task_arg_free(task_arg);
+        message_free(m);
         return exit_code;
     }
 

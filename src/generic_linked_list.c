@@ -414,10 +414,6 @@ generic_linked_list_remove_first(generic_linked_list self, void** out_data)
     if (self->_size == 0)
     {
 
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - list is empty\n", __PRETTY_FUNCTION__);
-#endif
-
         if (out_data)
         {
             *out_data = NULL;
@@ -478,10 +474,6 @@ generic_linked_list_remove_last(generic_linked_list self, void** out_data)
 
     if (self->_size == 0)
     {
-
-#ifdef STDIO_DEBUG
-        fprintf(stderr, "%s - list is empty\n", __PRETTY_FUNCTION__);
-#endif
 
         if (out_data)
         {
