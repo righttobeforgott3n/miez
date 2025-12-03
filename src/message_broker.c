@@ -192,11 +192,11 @@ _publisher_task(void* arg)
     struct _publisher_task_arg_t* publisher_arg =
         (struct _publisher_task_arg_t*) arg;
 
-    // @todo here: channel_name and message could be copied in way to avoid
-    // the free call after.
     printf("[message_broker] channel: %s, message: %s\n",
            publisher_arg->_channel_name, publisher_arg->_message);
 
+    free(publisher_arg->_channel_name);
+    free(publisher_arg->_message);
     free(publisher_arg);  // @todo if the publisher arg structure starts to grow
                           // in complexity then implement a free helper.
 
@@ -307,8 +307,25 @@ message_broker_publish(struct message_broker_t* self, const char* channel,
         return -1;
     }
 
-    publisher_arg->_channel_name = (char*) channel;
-    publisher_arg->_message = (char*) message;
+    size_t channel_len = strlen(channel);
+    publisher_arg->_channel_name = malloc(channel_len + 1);
+    if (!publisher_arg->_channel_name)
+    {
+        free(publisher_arg);
+        return -1;
+    }
+    memcpy(publisher_arg->_channel_name, channel, channel_len + 1);
+
+    size_t message_len = strlen(message);
+    publisher_arg->_message = malloc(message_len + 1);
+    if (!publisher_arg->_message)
+    {
+        free(publisher_arg->_channel_name);
+        free(publisher_arg);
+        return -1;
+    }
+    memcpy(publisher_arg->_message, message, message_len + 1);
+
     publisher_arg->_channel_table = self->_channels;
 
     // @todo it would be useful here to have a thread pool which frees the
