@@ -42,32 +42,20 @@ On Debian/Ubuntu:
 sudo apt-get install build-essential cmake libssl-dev
 ```
 
-On macOS (with Homebrew):
-```bash
-brew install cmake openssl
-```
-
 On Fedora/RHEL:
 ```bash
 sudo dnf install gcc cmake openssl-devel
 ```
 
-## Building
+## Building (for devs)
 
 ```bash
 # Clone the repository
 git clone https://github.com/righttobeforgott3n/miez.git
 cd miez
 
-# Create build directory
-mkdir -p build && cd build
-
-# Configure and build
-cmake ..
-make
-
-# Run tests (optional)
-ctest --output-on-failure
+cmake -S . -B build -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/clang -DCMAKE_BUILD_TYPE:STRING=Debug -DENABLE_TESTS=1
+cmake --build build
 ```
 
 ## Usage
@@ -77,10 +65,11 @@ ctest --output-on-failure
 Before running the server, generate self-signed certificates for development:
 
 ```bash
-./scripts/generate_certs.sh
+cd tests
+./tests/scripts/generate_certs.sh
 ```
 
-This creates `server.crt`, `server.key`, and `server.pem` in the `certs/` directory.
+This creates `server.crt`, `server.key`, and `server.pem` in the `./tests/certs/` directory.
 
 ### Starting the Server
 
@@ -102,7 +91,7 @@ This creates `server.crt`, `server.key`, and `server.pem` in the `certs/` direct
 **Example:**
 
 ```bash
-./build/bin/network_server -p 8443 -c certs/server.crt -k certs/server.key -a my-secret-key
+./build/bin/network_server -p 8443 -c ./tests/certs/server.crt -k ./tests/certs/server.key -a my-secret-key
 ```
 
 ### Protocol
