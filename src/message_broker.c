@@ -1166,5 +1166,7 @@ subscription_get_pending_count(struct subscription_t* self, size_t* out_count)
 // the publisher, instead of waiting for the caller thread to complete the sub
 // operation, I task to an internal thread pool could be submitted.
 
-// @todo I would like to avoid the usage of _channels_mutex within the struct
-// message_broker_t
+// @todo I would like to avoid the usage of _channels_mutex, it degrades the
+// parallelism degree given by the hash table: I have forgotten to implement a
+// create_and_get atomic operation which would avoid the lock, and then lock the
+// specific created channel mutex.
