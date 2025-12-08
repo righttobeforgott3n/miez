@@ -39,12 +39,12 @@ The project includes several reusable generic data structures:
 
 On Debian/Ubuntu:
 ```bash
-sudo apt-get install build-essential cmake libssl-dev
+sudo apt-get install build-essential clang cmake libssl-dev
 ```
 
 On Fedora/RHEL:
 ```bash
-sudo dnf install gcc cmake openssl-devel
+sudo dnf install clang cmake openssl-devel
 ```
 
 ## Building (for devs)
