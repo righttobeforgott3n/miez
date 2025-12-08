@@ -1,6 +1,6 @@
 #!/bin/bash
 cd "$(dirname "$0")/.."
-./build/bin/network_server -p 8443 -c certs/server.crt -k certs/server.key -a shh... 2>&1
+./build/bin/network_server -p 8443 -c ./tests/certs/server.crt -k ./tests/certs/server.key -a shh... 2>&1
 
 
 # To test the server:

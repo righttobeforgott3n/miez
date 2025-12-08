@@ -203,14 +203,26 @@ _subscriber_receiver_thread(void* arg)
             message_get_content(msg, &content);
 
             size_t content_len = strlen(content);
-            char header[512];
-            snprintf(header, sizeof(header), "MSG %lu %s %zu\n", id, channel,
-                     content_len);
-
-            if (_send_response(ctx->_ssl, header) == 0)
+            
+            size_t total_len = 512 + content_len + 1;
+            char* full_message = malloc(total_len);
+            if (full_message)
             {
-                SSL_write(ctx->_ssl, content, (int) content_len);
-                SSL_write(ctx->_ssl, "\n", 1);
+                int header_len = snprintf(full_message, total_len, 
+                                         "MSG %lu %s %zu\n", id, channel, content_len);
+                memcpy(full_message + header_len, content, content_len);
+                full_message[header_len + content_len] = '\n';
+                
+                int total_write_len = header_len + content_len + 1;
+                int written = SSL_write(ctx->_ssl, full_message, total_write_len);
+                if (written <= 0)
+                {
+                    int ssl_error = SSL_get_error(ctx->_ssl, written);
+                    fprintf(stderr, "[network_server] SSL_write failed in receiver: %d\n", 
+                           ssl_error);
+                }
+                
+                free(full_message);
             }
 
             message_free(msg);
