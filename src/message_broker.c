@@ -512,6 +512,9 @@ _publisher_task_arg_free(struct _publisher_task_arg_t* arg)
     free(arg);
 }
 
+// @todo refactor this function to avoid _channels_mutex: generic_hash_table
+// must expose something like *_get_and_create as atomic function, and then
+// working on the channel specific mutex
 static void*
 _publisher_task(void* arg)
 {
@@ -776,6 +779,7 @@ message_broker_publish(struct message_broker_t* self, const char* channel,
     return 0;
 }
 
+// @todo refactor this function to avoid _channels_mutex
 int
 message_broker_subscribe(struct message_broker_t* self, const char* channel,
                          struct subscription_t** out_subscription)
@@ -1161,3 +1165,6 @@ subscription_get_pending_count(struct subscription_t* self, size_t* out_count)
 // @todo I suppose an improvement could be made on the subscriber side: as for
 // the publisher, instead of waiting for the caller thread to complete the sub
 // operation, I task to an internal thread pool could be submitted.
+
+// @todo I would like to avoid the usage of _channels_mutex within the struct
+// message_broker_t
