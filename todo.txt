@@ -1,0 +1,4 @@
+- [] implement an atomic function which create, if not exists a key-value pair, and then return it from the hash table.
+- [] replace the mutex within the message_broker structure exploiting the hash table per channel parallelism.
+- [] export all the data structures importing them into a separate repo, finally re-include the structures as git sub-module.
+- [] export the thread pool implementation importing it into a separate repo, finally re-include the thread pool as git sub-module.
