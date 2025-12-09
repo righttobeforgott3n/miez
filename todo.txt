@@ -2,3 +2,6 @@
 - [] replace the mutex within the message_broker structure exploiting the hash table per channel parallelism.
 - [] export all the data structures importing them into a separate repo, finally re-include the structures as git sub-module.
 - [] export the thread pool implementation importing it into a separate repo, finally re-include the thread pool as git sub-module.
+- [] preload channels API to maximize perfomance.
+- [] ACK for message delivery.
+- [] messages as log append.
