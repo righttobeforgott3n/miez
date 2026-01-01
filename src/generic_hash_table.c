@@ -467,9 +467,6 @@ generic_hash_table_insert(generic_hash_table self, void* key, void* value)
         return 1;
     }
 
-    // @note value can be NULL? Yes, for the moment but I do not see any problem
-    // with it.
-
     size_t hashed_key = self->_hash_function(key);
     size_t bucket_index = hashed_key % self->_capacity;
 
@@ -758,6 +755,69 @@ generic_hash_table_contains(generic_hash_table self, void* key)
 
     pthread_mutex_unlock(self->_mutexes + bucket_index);
     return 1;
+}
+
+int
+generic_hash_table_apply_on(generic_hash_table self, void* key,
+                            void (*apply)(void*))
+{
+
+    if (!self)
+    {
+        return 1;
+    }
+
+    if (!key)
+    {
+        return 1;
+    }
+
+    if (!apply)
+    {
+        return 1;
+    }
+
+    size_t hash = self->_hash_function(key) % self->_capacity;
+    pthread_mutex_lock(self->_mutexes + hash);
+
+    generic_linked_list_iterator begin = NULL;
+    int exit_code =
+        generic_linked_list_iterator_begin(*(self->_buckets + hash), &begin);
+    if (!begin)
+    {
+        pthread_mutex_unlock(self->_mutexes + hash);
+        return -1;
+    }
+
+    struct _key_value_t* pair = NULL;
+    while (generic_linked_list_iterator_is_valid(begin) == 0)
+    {
+
+        exit_code = generic_linked_list_iterator_get(begin, (void**) &pair);
+        if (exit_code)
+        {
+            pthread_mutex_unlock(self->_mutexes + hash);
+            generic_linked_list_iterator_free(begin);
+            return exit_code;
+        }
+        if (!pair)
+        {
+            pthread_mutex_unlock(self->_mutexes + hash);
+            generic_linked_list_iterator_free(begin);
+            return -1;
+        }
+
+        if (self->_compare_key_function(pair->_key, key) == 0)
+        {
+            apply(pair->_value);
+            break;
+        }
+    }
+
+    generic_linked_list_iterator_free(begin);
+    pthread_mutex_unlock(self->_mutexes + hash);
+
+    return 0;
 }
 
 // @todo temporary for the free, set_free_function etc I have decided to warning

@@ -74,4 +74,8 @@ int
 generic_hash_table_for_each(generic_hash_table self,
                             void (*apply)(void*, void*));
 
+int
+generic_hash_table_apply_on(generic_hash_table self, void* key,
+                            void (*apply)(void*));
+
 #endif  // GENERIC_HASH_TABLE_H

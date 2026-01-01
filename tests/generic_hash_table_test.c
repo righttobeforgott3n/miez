@@ -1627,6 +1627,91 @@ generic_hash_table_empty_table_concurrent_test()
     return 0;
 }
 
+struct thread_increment_arg_t
+{
+    generic_hash_table ht;
+    int* key;
+};
+
+void
+increment(int* v)
+{
+    printf("Value before: %d\n", *v);
+    (*v)++;
+    printf("Value after: %d\n", *v);
+}
+
+void*
+value_increment_procedure(void* t_arg)
+{
+
+    struct thread_increment_arg_t* tia = (struct thread_increment_arg_t*) t_arg;
+    generic_hash_table ht = tia->ht;
+    int* key = tia->key;
+    printf("Key: %d\n", *key);
+
+    int exit_code = generic_hash_table_apply_on(ht, (void*) key,
+                                                (void (*)(void*)) increment);
+    if (exit_code)
+    {
+        fprintf(stderr, "Error during apply - exit code: %d\n", exit_code);
+        return NULL;
+    }
+
+    return NULL;
+}
+
+void
+generic_hash_table_atomic_apply_test(void)
+{
+
+    TEST_SUITE("Generic Hash Table Atomic Apply Test");
+
+    generic_hash_table ht = NULL;
+    int exit_code = generic_hash_table_new(
+        16, int_hash, int_free, int_copy, int_free, int_copy, int_compare, &ht);
+    TEST_ASSERT(exit_code == 0, "Hash Table Created");
+
+    int key = 1;
+    int value = 0;
+    exit_code = generic_hash_table_insert(ht, (void*) &key, (void*) &value);
+    TEST_ASSERT(exit_code == 0, "Hash Table Insert");
+
+    int* value_got = NULL;
+    exit_code = generic_hash_table_get(ht, (void*) &key, (void**) &value_got);
+    TEST_ASSERT(exit_code == 0, "Hash Table Get");
+    TEST_ASSERT(*value_got == 0, "Hash Table Value Got");
+
+    struct thread_increment_arg_t arg;
+    arg.ht = ht;
+    arg.key = &key;
+
+    pthread_t threads[100];
+    int i = 0;
+    while (i < 100)
+    {
+        pthread_create(&threads[i], NULL, value_increment_procedure, &arg);
+        i++;
+    }
+
+    i = 0;
+    while (i < 100)
+    {
+        pthread_join(threads[i], NULL);
+        i++;
+    }
+
+    int b = *value_got == 100;
+    TEST_ASSERT(b, "Value has been incremented");
+    if (!b)
+    {
+        fprintf(stderr, "Value: %d\n", *value_got);
+    }
+
+    exit_code = generic_hash_table_free(ht);
+    TEST_ASSERT(exit_code == 0, "Hash Table Freed");
+}
+
 int
 main(int argc __attribute__((unused)), char** argv __attribute__((unused)))
 {
@@ -1683,6 +1768,8 @@ main(int argc __attribute__((unused)), char** argv __attribute__((unused)))
     generic_hash_table_concurrent_contains_test();
     generic_hash_table_rapid_insert_delete_test();
     generic_hash_table_empty_table_concurrent_test();
+
+    generic_hash_table_atomic_apply_test();
 
     printf("\n");
     printf("*****************************************\n");
